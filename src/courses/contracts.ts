@@ -12,10 +12,12 @@ export interface ContentReference {
 
 export type TeachingInline = string | { role: 'function' | 'variable' | 'code'; text: string };
 
+export type TeachingProse = string | TeachingInline[];
+
 export type TeachingBlock =
   | { id: ContentId; type: 'paragraph' | 'warning'; content: TeachingInline[] }
   | { id: ContentId; type: 'explanation'; markdown: string }
-  | { id: ContentId; type: 'worked-example'; language: string; code: string; explanation: string };
+  | { id: ContentId; type: 'worked-example'; language: string; code: string; explanation: TeachingProse };
 
 export interface MentorTip {
   id: ContentId;
@@ -68,12 +70,12 @@ export interface Exercise {
   version: ContentVersion;
   lessonId: ContentId;
   title: string;
-  prompt: string;
+  prompt: TeachingProse;
   kind: 'explain' | 'predict' | 'investigate' | 'modify' | 'write' | 'transfer';
   conceptIds: ContentId[];
   difficulty: number;
   starterCode?: string;
-  hints: { level: HintLevel; text: string }[];
+  hints: { level: HintLevel; text: TeachingProse }[];
   execution?: {
     engineId: string;
     language: string;

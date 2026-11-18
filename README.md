@@ -2,11 +2,19 @@
 
 ENNTOR is a teaching-first learning platform for independent problem solving. Its first planned Course Pack focuses on Python and applied AI/ML interview skills. The educational goal is to write correct, explainable code from scratch, repair mistakes, and transfer understanding to unfamiliar problems.
 
-## Current release · Milestone 2B.1
+## Current release · Milestone 2C
 
-The Climb offers one pilot lesson, **F01.01 · Expressions and evaluation order**. Open the pilot, read the worked example, commit an output prediction, then run real Python and investigate the result. For an incorrect answer, the Investigate step gives tracing guidance and asks for a fresh prediction before Modify. An answer of 30 triggers a tentative explanation the learner can confirm or reject. That response stays in the current session. In Modify, edit a function and use Check solution to compare its return values against three public cases covering ordinary, zero, and negative inputs. Each row shows the inputs, expected value, actual value, and test status. The pilot sits outside curriculum progression. The Gym and The Room remain previews.
+The Climb offers one pilot lesson, **F01.01 · Expressions and evaluation order**. Learn from a worked example, commit a prediction, investigate the real Python result, modify a function, then write one from scratch. Finish saves the activity evidence and the optional Sweat check-in. The Gym and The Room remain previews.
 
-Run executes the editor as a script and displays stdout, stderr, and exceptions. Check solution calls the function in a fresh worker for each case and reports the verdict separately. Stop terminates the active worker. The next run starts cleanly. Reset restores starter code in the current Modify activity. Try again from scratch starts a fresh Modify attempt with starter code and clears execution and grading feedback. Both ask first and keep edited code under Previous drafts, which can be restored. Editor text is saved in localStorage for the current browser and origin. Reloading restores the draft once you repeat the prediction, which is session-only.
+**Run** executes the editor as a script. **Check solution** calls the function with public cases and reports the verdict separately from console output. **Stop** terminates the active worker. Reset and Try again from scratch save edited code under Previous drafts before restoring starter code.
+
+A passing Make result without hints or a prior pass on that exercise demonstrates independent skill on the pilot problem. Conceptual hints count as assistance. An implementation hint requires a separate Make task before Finish. The completion summary distinguishes these states.
+
+### Teaching prose and local evidence
+
+Author teaching prose with ordinary strings and explicit inline spans tagged as function, variable, or code. The shared renderer applies the existing theme styles to Learn, Investigate, instructions, and hints.
+
+Drafts and versioned session evidence are saved to browser localStorage on the current origin. Save & Exit keeps the current session available from The Climb. Learning history shows prior submissions, and reopening a completed lesson displays the saved result. The pilot records checking time rather than time spent studying. Storage limits and browser data clearing apply. Use one editing tab per session. Learner evidence stays in the browser.
 
 ### Python runtime
 

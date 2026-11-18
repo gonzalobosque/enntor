@@ -79,3 +79,13 @@ At the time of the rename, the physical project folder was `Enhtor`. The existin
 ## Public documentation and history
 
 The public specifications generalize individual educational and project background and employer assessment details. Lesson definitions, mentor tips, research citations, and technical requirements carry forward. The public repository starts with the reviewed snapshot. The original specifications and development history are retained privately.
+
+## E10 · Semantic teaching prose and pilot evidence
+
+F01.01 authors prose as text or an ordered array of text and tagged inline symbols. Use the function role for callable names, the variable role for names and parameters, and the code role for neutral syntax and literals. The shared React renderer escapes text and uses existing theme tokens.
+
+The pilot stores one versioned localStorage record per lesson session. Prediction commits, follow-up attempts, hypothesis responses, hints, and submissions save at interaction boundaries. A submission receives an ID before execution, and its result updates that record. An interrupted submission remains visible in history. Submission elapsed time uses a monotonic clock and measures checking time only. Finish writes a single completion object on the existing session after checking supporting activity evidence. Storage errors are visible and completion appears only after its write succeeds.
+
+Evidence and drafts live in the current browser origin. Existing Modify drafts remain readable in the initial pilot session, and subsequent sessions use separate draft keys. The store has no backend, sync, account identity, or remote transmission. Browser storage is clearable and quota-limited. Concurrent editing is unsupported, and writes detect a changed saved snapshot before saving. Sleep or time between sessions is excluded from check duration.
+
+Make checks distinguish unaided work from conceptual help, implementation help, and repeated passes. Conceptual hints allow lesson completion with an assisted result. Implementation help requires another passing exercise, so the pilot offers a separate Make transfer problem. Reopening a finished session displays its saved evidence. A separate session requires an explicit action.

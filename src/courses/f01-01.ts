@@ -1,8 +1,12 @@
-import type { CoursePack, Exercise } from './contracts';
+import type { CoursePack, Exercise, TeachingInline } from './contracts';
 import { pythonEngineId, pythonVersion } from '../execution/python-config';
 
+const fn = (text: string): TeachingInline => ({ role: 'function', text });
+const name = (text: string): TeachingInline => ({ role: 'variable', text });
+const code = (text: string): TeachingInline => ({ role: 'code', text });
+
 const version = '1.0.0';
-const lessonVersion = '1.1.0';
+const lessonVersion = '1.2.0';
 const lessonId = 'F01.01';
 const execution = {
   engineId: pythonEngineId, language: 'python', runtimeVersion: pythonVersion,
@@ -17,16 +21,15 @@ const predict: Exercise = {
   grading: {
     graderId: 'stdout-number', graderVersion: version, rubric: 'Predict the single printed integer.',
     publicCases: [{ id: 'prediction', input: [], expected: 22 }],
-    configuration: {
-      explanation: 'Trace backwards from print: it needs base and extra. Then execute forwards: base is 4, extra is 6, and multiplication happens before addition. Python prints 4 + 18, or 22.',
-    },
+    configuration: {},
   },
 };
 const modify: Exercise = {
   id: 'F01.01.modify', version, lessonId, title: 'Apply the multiplier to the whole sum', kind: 'modify',
-  prompt: 'Change total(base, extra) so it first adds base and extra, then returns three times that sum. Both inputs are integers and may be zero or negative. Return the result from the function.',
+  prompt: ['Change ', fn('total()'), ' so it first adds ', name('base'), ' and ', name('extra'),
+    ', then returns three times that sum. Both inputs are integers and may be zero or negative. Return the result from the function.'],
   conceptIds: predict.conceptIds, difficulty: 1,
-  hints: [{ level: 'H1', text: 'Group the addition with parentheses or assign the sum to a name before multiplying.' }],
+  hints: [{ level: 'H1', text: ['Group ', code('base + extra'), ' with parentheses or assign the sum to a name before multiplying.'] }],
   starterCode: 'def total(base, extra):\n    return base + extra * 3\n',
   execution: { ...execution, entryPoint: 'total' },
   grading: {
@@ -40,6 +43,43 @@ const modify: Exercise = {
   },
 };
 
+const make: Exercise = {
+  id: 'F01.01.make', version, lessonId, title: 'Write a theatre receipt function', kind: 'write',
+  prompt: ['Define ', fn('receipt()'), ' with integer parameters ', name('tickets'), ' and ', name('price'),
+    ', in that order. Each ticket costs ', name('price'), ' credits. Charge a fixed booking fee of 4 credits once per order, even for zero tickets. Return the total as an integer. Inputs are nonnegative. For example, 3 tickets at 7 credits cost 25 credits.'],
+  conceptIds: predict.conceptIds, difficulty: 1, starterCode: '# Write the full function here.\n',
+  hints: [
+    { level: 'H0', text: ['Think about which cost repeats with ', name('tickets'), ' and which cost is charged once.'] },
+    { level: 'H1', text: ['Compute the ticket subtotal first. Then add the booking fee to that subtotal.'] },
+    { level: 'H3', text: ['Inside ', fn('receipt()'), ', use ', code('return tickets * price + 4'), '.'] },
+  ],
+  execution: { ...execution, entryPoint: 'receipt' },
+  grading: {
+    graderId: 'return-value', graderVersion: version, rubric: 'Return the total for each booking.',
+    publicCases: [
+      { id: 'ordinary', input: [3, 7], expected: 25 },
+      { id: 'zero-tickets', input: [0, 7], expected: 4 },
+      { id: 'grouping', input: [2, 0], expected: 4 },
+    ], configuration: {},
+  },
+};
+
+const transfer: Exercise = {
+  id: 'F01.01.make-transfer', version, lessonId, title: 'Write a score adjustment function', kind: 'transfer',
+  prompt: ['Define ', fn('adjust_score()'), ' with integer parameters ', name('score'), ' and ', name('penalty'),
+    ', in that order. Double the score, then subtract the penalty and return the integer result. Inputs may be zero or signed. For a score of 7 and a penalty of 3, return 11.'],
+  conceptIds: predict.conceptIds, difficulty: 1, starterCode: '# Write the full function here.\n', hints: [],
+  execution: { ...execution, entryPoint: 'adjust_score' },
+  grading: {
+    graderId: 'return-value', graderVersion: version, rubric: 'Return the adjusted score.',
+    publicCases: [
+      { id: 'ordinary', input: [7, 3], expected: 11 },
+      { id: 'grouping', input: [0, 4], expected: -4 },
+      { id: 'signed', input: [-2, -3], expected: -1 },
+    ], configuration: {},
+  },
+};
+
 export const pilotPack = {
   schemaVersion: '1.0', version: lessonVersion, id: 'python-ai-pilot',
   title: 'Python & AI interview skills', description: 'A single lesson pilot.', subject: 'Python', language: 'en',
@@ -48,8 +88,8 @@ export const pilotPack = {
     id: lessonId, version: lessonVersion, moduleId: 'F01', title: 'Expressions and evaluation order',
     objectives: ['Distinguish expressions, statements, and displayed output.',
       'Trace dependencies backwards from an output, then execute the program forwards.'],
-    prerequisites: [], estimatedMinutes: 8, exerciseIds: [predict.id, modify.id],
-    progression: { requiredExerciseIds: [predict.id, modify.id], requiresIndependentTransfer: false },
+    prerequisites: [], estimatedMinutes: 12, exerciseIds: [predict.id, modify.id, make.id, transfer.id],
+    progression: { requiredExerciseIds: [predict.id, modify.id, make.id], requiresIndependentTransfer: true },
     teachingBlocks: [
       { id: 'F01.01.explain', type: 'paragraph', content: [
         'An expression produces a value. An assignment is a statement that evaluates the expression on its right and binds the result to a name. Calling ',
@@ -65,24 +105,31 @@ export const pilotPack = {
       ] },
       { id: 'F01.01.example', type: 'worked-example', language: 'python',
         code: 'score = 2 + 3 * 4\nprint(score)',
-        explanation: 'The print call depends on score. On the first line, 3 * 4 gives 12, then 2 + 12 gives 14. Assignment binds 14 to score. The second line displays 14. Parentheses around 2 + 3 would make Python add first.' },
+        explanation: [fn('print()'), ' needs ', name('score'), '. First evaluate ', code('3 * 4'),
+          ', then add ', code('2'), '. The assignment binds ', code('14'), ' to ', name('score'),
+          ', and the second line displays it. Parentheses around ', code('2 + 3'), ' would make Python add first.'] },
     ],
     mentorTips: [
       { id: 'F01.01.tip1', text: 'Track values, name bindings, and displayed output as separate events.', sourceRefs: ['P01'] },
       { id: 'F01.01.tip2', text: 'Resolve inner dependencies using Python’s evaluation and short-circuit rules.', sourceRefs: ['P04'] },
     ],
   }],
-  exercises: [predict, modify],
+  exercises: [predict, modify, make, transfer],
 } satisfies CoursePack;
 
 export const predictionCoaching = {
   alternativeAnswer: 30,
-  possibleReasoning: 'You may have added 4 and 6 first, then multiplied the sum by 3. That gives (4 + 6) * 3 = 30.',
-  actualReasoning: 'Python multiplies 6 by 3 first in this expression, then adds 4. That gives 4 + (6 * 3) = 22.',
+  explanation: ['Trace back from ', fn('print()'), ' to ', name('base'), ' and ', name('extra'),
+    '. Then run forward: ', name('base'), ' is ', code('4'), ' and ', name('extra'), ' is ', code('6'),
+    '. Python evaluates ', code('6 * 3'), ' before adding ', code('4'), '.'],
+  modifyFeedback: ['Compare the returned values with the expected values. Check how ', fn('total()'),
+    ' groups ', name('base'), ' and ', name('extra'), '.'],
+  possibleReasoning: ['You may have added ', name('base'), ' and ', name('extra'), ' first, then multiplied the sum by 3. That gives ', code('(4 + 6) * 3 = 30'), '.'],
+  actualReasoning: [fn('print()'), ' receives ', code('4 + (6 * 3)'), '. Python multiplies ', name('extra'), ' by 3 before adding ', name('base'), ', giving ', code('22'), '.'],
   followUp: {
     code: 'base = 3\nextra = base + 2\nprint(base + extra * 2)',
     expected: 13,
-    hint: 'Work out extra first. On the final line, identify the two values joined by * before adding base.',
-    explanation: 'extra is 5. Multiplication gives 5 * 2 = 10, then adding base gives 13.',
+    hint: ['Work out ', name('extra'), ' first. Identify the two values joined by ', code('*'), ' before adding ', name('base'), '.'],
+    explanation: [name('extra'), ' is ', code('5'), '. Multiplication gives ', code('5 * 2 = 10'), ', then adding ', name('base'), ' gives ', code('13'), '.'],
   },
 };

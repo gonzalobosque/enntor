@@ -1,247 +1,179 @@
-import { TeachingText } from './TeachingText';
-import { PredictionReview } from './PredictionReview';
 import { useEffect, useRef, useState } from 'react';
+import { predictionCoaching } from '../courses/f01-01';
 import { loadPilot } from '../courses/load-pilot';
-import type { ExecutionResult, GradeResult } from '../execution/contracts';
-import { gradeExercise, runExercise } from '../execution/grading';
+import type { Exercise, HintLevel } from '../courses/contracts';
+import { runExercise } from '../execution/grading';
 import { pythonEngine } from '../execution/python-engine';
+import { TeachingText, TeachingProseText } from './TeachingText';
+import { PredictionReview } from './PredictionReview';
+import { Console, ExerciseEditor } from './ExerciseEditor';
+import { hasSolutionHelp, learningState, now } from './evidence';
+import type { Submission } from './evidence';
+import { useEvidence } from './useEvidence';
+import { LessonFinish } from './LessonFinish';
 
-const { lesson, prediction, modification } = loadPilot();
-const initialCode = modification.starterCode!;
-const draftKey = `enntor.draft.${modification.id}.${modification.version}`;
-
-const archiveKey = `${draftKey}.previous`;
-
-function readDraft() {
-  try {
-    return localStorage.getItem(draftKey);
-  } catch {
-    return null;
-  }
-}
-
-function readArchive(): string[] {
-  const entries: unknown = JSON.parse(localStorage.getItem(archiveKey) ?? '[]');
-  if (!Array.isArray(entries) || !entries.every((entry) => typeof entry === 'string')) {
-    throw new Error('Stored draft archive is invalid.');
-  }
-  return entries;
-}
-
-function Console({ runs }: { runs: ExecutionResult[] }) {
-  if (!runs.length) return null;
-  const last = runs[runs.length - 1];
-  const details = runs.filter((result) => result.stdout || result.stderr || result.error);
-  return (
-    <div role="status" className="pilot-console">
-      <p><strong>Execution {last.status}</strong></p>
-      {details.map((result) => (
-        <div key={result.requestId}>
-          {runs.length > 1 && <strong>Test {runs.indexOf(result) + 1}</strong>}
-          {result.stdout && <pre>stdout{'\n'}{result.stdout}</pre>}
-          {result.stderr && <pre>stderr{'\n'}{result.stderr}</pre>}
-          {result.error && <pre>{result.status === 'error' ? 'Exception or runtime error\n' : ''}{result.error.message}</pre>}
-        </div>
-      ))}
-    </div>
-  );
-}
-
+const { pack, lesson, prediction, modification, make, transfer } = loadPilot();
 export const pilotTitle = lesson.title;
+const lessonRef = { id: lesson.id, version: lesson.version };
+const stages = ['Learn', 'Predict', 'Investigate', 'Modify', 'Make', 'Finish'];
 
 export function PilotLesson() {
-  const [answer, setAnswer] = useState('');
-  const [committed, setCommitted] = useState<string>();
-  const [verified, setVerified] = useState(false);
-  const [predictionRun, setPredictionRun] = useState<ExecutionResult>();
-  const [savedDraft] = useState(readDraft);
-  const [code, setCode] = useState(savedDraft ?? initialCode);
-  const [draftNotice, setDraftNotice] = useState(savedDraft !== null && savedDraft !== initialCode ? 'Previous draft restored' : '');
-  const [archive, setArchive] = useState(() => {
-    try { return readArchive(); } catch { return []; }
-  });
-  const [saveFailed, setSaveFailed] = useState(false);
-  const [runs, setRuns] = useState<ExecutionResult[]>([]);
-  const [grade, setGrade] = useState<GradeResult>();
-  const [busy, setBusy] = useState(false);
+  const evidence = useEvidence(pack, lessonRef);
+  return <LessonSession key={evidence.session.id} evidence={evidence} />;
+}
+
+function LessonSession({ evidence }: { evidence: ReturnType<typeof useEvidence> }) {
+  const { session, history, update, save, error, startAgain } = evidence;
+  const state = learningState(session, modification.id, make.id, transfer.id);
+  const [answer, setAnswer] = useState(session.prediction?.answer ?? '');
+  const showTransfer = !!session.transferOpenedAt;
+  const [predicting, setPredicting] = useState(false);
   const active = useRef<AbortController | null>(null);
+  const [busy, setBusy] = useState<Record<string, boolean>>({});
+  const [draftFailures, setDraftFailures] = useState<Record<string, boolean>>({});
+  const busyCount = Object.values(busy).filter(Boolean).length;
+  const draftFailed = Object.values(draftFailures).some(Boolean);
+  useEffect(() => () => { active.current?.abort(); }, []);
 
-  useEffect(() => () => {
-    active.current?.abort();
-    active.current = null;
-  }, []);
+  useEffect(() => {
+    if (!error && !draftFailed) return;
+    const keepOpen = (event: Event) => event.preventDefault();
+    const warn = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = '';
+    };
+    window.addEventListener('enntor:before-route-change', keepOpen);
+    window.addEventListener('beforeunload', warn);
+    return () => {
+      window.removeEventListener('enntor:before-route-change', keepOpen);
+      window.removeEventListener('beforeunload', warn);
+    };
+  }, [error, draftFailed]);
 
-  function saveCode(value: string) {
-    setDraftNotice('');
-    setCode(value);
-    setRuns([]);
-    setGrade(undefined);
-    try {
-      localStorage.setItem(draftKey, value);
-      setSaveFailed(false);
-    } catch {
-      setSaveFailed(true);
-    }
-  }
-
-  function replaceDraft(value: string, notice: string) {
-    try {
-      const previous = readArchive();
-      const stored = localStorage.getItem(draftKey);
-      for (const draft of [stored, code]) {
-        if (draft !== null && draft !== initialCode && draft !== value && !previous.includes(draft)) {
-          previous.push(draft);
-        }
-      }
-      localStorage.setItem(archiveKey, JSON.stringify(previous));
-      setArchive(previous);
-      localStorage.setItem(draftKey, value);
-    } catch {
-      setDraftNotice('Could not safely save your draft. The editor was kept as-is.');
-      return;
-    }
-    setCode(value);
-    setRuns([]);
-    setGrade(undefined);
-    setSaveFailed(false);
-    setDraftNotice(notice);
-  }
-
-  async function execute(mode: 'predict' | 'run' | 'check') {
-    if (active.current) return;
+  async function runPrediction() {
+    if (active.current || state.prediction || !/^[+-]?\d+$/.test(answer.trim())) return;
     const job = new AbortController();
     active.current = job;
-    setBusy(true);
+    const answerText = answer.trim();
+    update((old) => ({ ...old, prediction: old.prediction ?? {
+      id: crypto.randomUUID(), exercise: { id: prediction.id, version: prediction.version },
+      answer: answerText, committedAt: now(), runs: [],
+    } }));
+    setPredicting(true);
     try {
-      if (mode === 'predict') {
-        if (committed === undefined) setCommitted(answer.trim());
-        const result = await runExercise(pythonEngine, prediction, prediction.starterCode!, job.signal);
-        if (active.current === job) setPredictionRun(result);
-      } else {
-        setRuns([]);
-        setGrade(undefined);
-        if (mode === 'check') {
-          const checked = await gradeExercise(pythonEngine, modification, code, job.signal);
-          if (active.current === job) {
-            setRuns(checked.runs);
-            setGrade(checked.grade);
-          }
-        } else {
-          const result = await runExercise(pythonEngine, modification, code, job.signal);
-          if (active.current === job) setRuns([result]);
-        }
-      }
+      const result = await runExercise(pythonEngine, prediction, prediction.starterCode!, job.signal);
+      update((old) => ({ ...old, prediction: { ...old.prediction!, runs: [...old.prediction!.runs, result],
+        hypothesis: result.status === 'completed' && Number(answerText) === predictionCoaching.alternativeAnswer &&
+          Number(result.stdout.trim()) !== Number(answerText) ? 'addition-first' : undefined } }));
     } finally {
-      if (active.current === job) {
-        active.current = null;
-        setBusy(false);
-      }
+      active.current = null;
+      setPredicting(false);
     }
   }
 
-  const output = predictionRun?.status === 'completed' ? predictionRun.stdout.trim() : undefined;
-  const numericAnswer = /^[+-]?\d+$/.test(answer.trim());
+  function record(attempt: Submission) {
+    update((old) => ({ ...old, submissions: attempt.finishedAt
+      ? old.submissions.map((item) => item.id === attempt.id ? attempt : item)
+      : [...old.submissions, attempt] }));
+  }
+
+  function editor(exercise: Exercise, stage: 'Modify' | 'Make') {
+    const base = `enntor.draft.${exercise.id}.${exercise.version}`;
+    const key = session.legacyDrafts && exercise.id === modification.id ? base : `${base}.${session.id}`;
+    const visibleHints = session.hints.filter((hint) => hint.exercise.id === exercise.id).map(({ level }) => level);
+    const previous = history.filter(({ id }) => id !== session.id);
+    const priorHints = previous.flatMap((item) => item.hints).filter((hint) => hint.exercise.id === exercise.id)
+      .map(({ level }) => level);
+    const priorPass = previous.some((item) => item.submissions.some((attempt) =>
+      attempt.exercise.id === exercise.id && attempt.grade?.verdict === 'passed'));
+    return <ExerciseEditor key={exercise.id} {...{ stage, exercise, draftKey: key, priorPass }}
+      hints={visibleHints} feedback={stage === 'Modify' ? predictionCoaching.modifyFeedback : undefined}
+      onBusy={(value) => setBusy((old) => ({ ...old, [exercise.id]: value }))}
+      onDraftFailure={(value) => setDraftFailures((old) => ({ ...old, [exercise.id]: value }))}
+      onHint={(level: HintLevel) => update((old) => ({ ...old, hints: [...old.hints,
+        { exercise: { id: exercise.id, version: exercise.version }, level, at: now() }] }))}
+      onAttempt={(attempt) => record({ ...attempt, hints: [...new Set([...priorHints, ...attempt.hints])] })} />;
+  }
+
+  const stage = session.completion ? 6 : state.canFinish ? 5 : state.modified ? 4 : state.investigated ? 3
+    : state.prediction ? 2 : session.learnedAt ? 1 : 0;
+  const output = state.prediction?.stdout.trim();
+  const lastRun = session.prediction?.runs.at(-1);
+  const assistance = state.made.some((item) => item.hints.length > 0 || item.priorPass);
+
   return (
     <article className="pilot">
-      <a className="back-link" href="#/climb">← The Climb</a>
+      <a className="back-link" href="#/climb" onClick={(event) => {
+        if (error || draftFailed || predicting || busyCount) event.preventDefault();
+      }}>← The Climb</a>
       <p className="eyebrow">Pilot lesson · {lesson.id} · {lesson.estimatedMinutes} min</p>
-      <h1>{lesson.title.split("evaluation order")[0]}<span>evaluation order</span></h1>
-      <section className="pilot-section" aria-labelledby="learn-heading">
-        <h2 id="learn-heading">Trace backwards, execute forwards</h2>
-        {lesson.teachingBlocks.filter((block) => block.type !== 'warning').map((block) => <TeachingText key={block.id} block={block} />)}
-      </section>
-      <section className="pilot-section" aria-labelledby="predict-heading">
-        <h2 id="predict-heading">Predict</h2>
-        <p>{prediction.prompt}</p>
-        <pre>{prediction.starterCode}</pre>
-        <form onSubmit={(event) => {
-          event.preventDefault();
-          if (numericAnswer && output === undefined) void execute('predict');
-        }}>
-          <label htmlFor="prediction">Your prediction</label>
-          <div className="pilot-controls">
-            <input id="prediction" value={answer} onChange={(event) => setAnswer(event.target.value)}
-              readOnly={committed !== undefined} autoComplete="off" />
-            <button className="pilot-primary" disabled={!numericAnswer || busy || output !== undefined}>
-              {committed === undefined ? 'Commit prediction & run' : 'Run prediction'}
-            </button>
-            {output === undefined && <button type="button" disabled={!busy} onClick={() => active.current?.abort()}>Stop</button>}
-          </div>
-        </form>
-        {predictionRun && <Console runs={[predictionRun]} />}
-      </section>
-      {output !== undefined && committed !== undefined && (
-        <PredictionReview answer={committed} output={output}
-          explanation={String(prediction.grading.configuration.explanation)}
-          warning={lesson.teachingBlocks.find((block) => block.type === 'warning')}
-          onVerified={() => setVerified(true)} />
-      )}
-      {output !== undefined && (verified || Number(committed) === Number(output)) && (
-        <section className="pilot-section" aria-labelledby="modify-heading">
-          <h2 id="modify-heading">Modify · {modification.title}</h2>
-          <p>{modification.prompt}</p>
-          <details><summary>Hint</summary><p>{modification.hints[0].text}</p></details>
-          <label htmlFor="python-editor">Python code</label>
-          <textarea id="python-editor" rows={8} value={code} spellCheck={false} autoCapitalize="off"
-            autoComplete="off" readOnly={busy} onChange={(event) => saveCode(event.target.value)} />
-          <p className="muted" role="status">{saveFailed ? 'Draft could not be saved in this browser.' : 'Drafts are saved in this browser.'}</p>
-          <div className="pilot-controls">
-            <button disabled={busy} onClick={() => void execute('run')}>Run</button>
-            <button className="pilot-primary" disabled={busy} onClick={() => void execute('check')}>Check solution</button>
-            <button disabled={!busy} onClick={() => active.current?.abort()}>Stop</button>
-            <button disabled={busy || code === initialCode} onClick={() => {
-              if (window.confirm('Reset to starter code? Your draft will be saved under Previous drafts.')) {
-                replaceDraft(initialCode, 'Editor reset to starter code.');
-              }
-            }}>Reset</button>
-            <button disabled={busy} onClick={() => {
-              if (window.confirm('Start from scratch? Your current draft will be saved under Previous drafts.')) {
-                replaceDraft(initialCode, 'Fresh attempt started.');
-              }
-            }}>Try again from scratch</button>
-          </div>
-          {draftNotice && <p className="muted" role="status">{draftNotice}</p>}
-          {archive.length > 0 && (
-            <details>
-              <summary>Previous drafts ({archive.length})</summary>
-              <ol>{archive.map((draft, index) => <li key={index}>
-                <button type="button" disabled={busy || draft === code} onClick={() => {
-                  if (window.confirm('Restore this draft? Your current edits will be kept under Previous drafts.')) {
-                    replaceDraft(draft, 'Previous draft restored');
-                  }
-                }}>Restore draft {index + 1}</button>
-              </li>)}</ol>
-            </details>
-          )}
-          <p className="muted">Run executes the editor as a script. Check solution calls your function with public test inputs.</p>
-          <Console runs={runs} />
-          {grade && (
-            <div className="pilot-feedback" role="status">
-              <h3>Test results</h3>
-              <p className={grade.verdict === 'passed' ? 'pilot-success' : undefined}>{grade.verdict === 'passed' ? 'All public cases passed.' : grade.verdict === 'failed'
-                ? 'Some public cases failed. Compare the returned values with the expected values and check which operation runs first.'
-                : 'Check incomplete. See the execution output above.'}</p>
-              <table className="pilot-tests">
-                <caption>Public return-value checks</caption>
-                <thead><tr><th scope="col">Inputs</th><th scope="col">Expected</th>
-                  <th scope="col">Actual</th><th scope="col">Status</th></tr></thead>
-                <tbody>{modification.grading.publicCases.map((test, index) => {
-                  const run = runs[index];
-                  const evidence = grade.evidence[index];
-                  return <tr key={test.id}>
-                    <td><code>{JSON.stringify(test.input)}</code></td>
-                    <td><code>{JSON.stringify(test.expected)}</code></td>
-                    <td><code>{run?.status === 'completed' ? JSON.stringify(run.value) : '—'}</code></td>
-                    <td>{evidence ? evidence.passed ? 'Passed' : 'Failed' : run ? 'Incomplete' : 'Not run'}</td>
-                  </tr>;
-                })}</tbody>
-              </table>
-              <p className="muted">These checks cover the listed cases. Lesson mastery requires independent practice.</p>
-            </div>
-          )}
+      <h1>Expressions and <span>evaluation order</span></h1>
+      <ol className="pilot-journey" aria-label="Lesson journey">
+        {stages.map((label, index) => <li key={label} aria-current={index === stage ? 'step' : undefined}
+          data-complete={index < stage}>{label}{index < stage && <span aria-label=" completed"> ✓</span>}</li>)}
+      </ol>
+      {!error && !draftFailed && !session.completion && history.some(({ id }) => id === session.id) &&
+        <p className="muted">Progress saved on this browser.</p>}
+      {error && <div className="pilot-feedback" role="alert">
+        <p>Local evidence could not be saved or read. Keep this lesson open and retry. Another tab may have changed this session.</p>
+        <button onClick={() => save()}>Retry saving</button>
+      </div>}
+      {!session.completion && <>
+        <section className="pilot-section" aria-labelledby="learn-heading">
+          <h2 id="learn-heading">Learn · Trace backwards, execute forwards</h2>
+          {lesson.teachingBlocks.filter(({ type }) => type !== 'warning').map((block) => <TeachingText key={block.id} block={block} />)}
+          {!session.learnedAt && <div className="pilot-controls">
+            <button className="pilot-primary" onClick={() => update((old) => ({ ...old, learnedAt: now() }))}>Continue to Predict</button>
+          </div>}
         </section>
-      )}
-      {busy && <p className="pilot-running" role="status">Python is running…</p>}
+        {session.learnedAt && <section className="pilot-section" aria-labelledby="predict-heading">
+          <h2 id="predict-heading">Predict</h2>
+          <p><TeachingProseText content={prediction.prompt} /></p>
+          <pre>{prediction.starterCode}</pre>
+          <form onSubmit={(event) => { event.preventDefault(); void runPrediction(); }}>
+            <label htmlFor="prediction">Your prediction</label>
+            <div className="pilot-controls">
+              <input id="prediction" value={answer} onChange={(event) => setAnswer(event.target.value)}
+                readOnly={!!session.prediction} autoComplete="off" />
+              <button className="pilot-primary" disabled={predicting || !!state.prediction || !/^[+-]?\d+$/.test(answer.trim())}>
+                {session.prediction ? 'Run prediction' : 'Commit prediction & run'}
+              </button>
+              {predicting && <button type="button" onClick={() => active.current?.abort()}>Stop</button>}
+            </div>
+          </form>
+          {lastRun && <Console runs={[lastRun]} />}
+        </section>}
+        {output !== undefined && session.prediction && <PredictionReview answer={session.prediction.answer} output={output}
+          warning={lesson.teachingBlocks.find(({ type }) => type === 'warning')}
+          reasoning={session.prediction.reasoning}
+          onReasoning={(reasoning) => update((old) => ({ ...old, prediction: { ...old.prediction!, reasoning } }))}
+          followUpResult={session.followUps.at(-1)}
+          onFollowUp={(submitted, correct) => update((old) => ({ ...old, followUps: [...old.followUps,
+            { id: crypto.randomUUID(), answer: submitted, correct, expected: predictionCoaching.followUp.expected, at: now() }] }))} />}
+        {state.investigated && editor(modification, 'Modify')}
+        {state.modified && editor(make, 'Make')}
+        {state.modified && assistance && !state.independent && !showTransfer && <div className="pilot-controls">
+          <button disabled={!!busyCount} onClick={() => update((old) => ({ ...old, transferOpenedAt: now() }))}>Try a fresh Make problem</button>
+        </div>}
+        {state.modified && showTransfer && editor(transfer, 'Make')}
+      </>}
+      <LessonFinish title={lesson.title} session={session}
+        onSweat={(sweat) => update((old) => ({ ...old, sweat }))} state={state} blocked={predicting || !!busyCount || draftFailed}
+        onFinish={(completion) => update((old) => ({ ...old, completion }), true)}
+        onExit={() => { if (save()) window.location.hash = '/climb'; }} onRestart={startAgain} />
+      <details className="pilot-section">
+        <summary>Learning history ({history.length} {history.length === 1 ? 'session' : 'sessions'})</summary>
+        {history.map((item) => <details key={item.id}>
+          <summary>{new Date(item.startedAt).toLocaleString()} · {item.completion ? 'Completed' : 'In progress'}</summary>
+          {item.prediction && <p>Prediction: {item.prediction.answer}. Follow-up checks: {item.followUps.length}.</p>}
+          {item.submissions.map((attempt) => <details key={attempt.id}>
+            <summary>{attempt.exercise.id} · {attempt.grade?.verdict ?? 'Interrupted or in progress'} · {new Date(attempt.startedAt).toLocaleTimeString()}</summary>
+            <pre>{attempt.source}</pre>
+            <p>{hasSolutionHelp(attempt.hints) ? 'Implementation help used.' : attempt.hints.length ? 'Conceptual help used.' : 'No hints recorded.'}</p>
+            {attempt.grade?.evidence.map((test) => <p key={test.id}>{test.passed ? 'Passed' : 'Failed'} · {test.message}</p>)}
+          </details>)}
+        </details>)}
+      </details>
     </article>
   );
 }

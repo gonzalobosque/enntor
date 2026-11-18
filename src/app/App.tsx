@@ -86,7 +86,13 @@ export function App() {
   const { theme, toggleTheme, saveError } = useTheme();
 
   useEffect(() => {
-    const navigate = () => setRoute(readRoute());
+    const navigate = (event: HashChangeEvent) => {
+      if (!window.dispatchEvent(new Event('enntor:before-route-change', { cancelable: true }))) {
+        window.history.replaceState(window.history.state, '', event.oldURL);
+        return;
+      }
+      setRoute(readRoute());
+    };
     window.addEventListener('hashchange', navigate);
     return () => window.removeEventListener('hashchange', navigate);
   }, []);
