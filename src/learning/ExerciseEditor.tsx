@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import type { Exercise, HintLevel, TeachingProse } from '../courses/contracts';
 import type { ExecutionResult, GradeResult } from '../execution/contracts';
 import { gradeExercise, runExercise } from '../execution/grading';
@@ -6,6 +6,8 @@ import { pythonEngine } from '../execution/python-engine';
 import { TeachingProseText } from './TeachingText';
 import type { Submission } from './evidence';
 import { now } from './evidence';
+
+const PythonEditor = lazy(async () => ({ default: (await import('./PythonEditor')).PythonEditor }));
 
 function readDraft(draftKey: string) {
   try {
@@ -43,7 +45,7 @@ export function Console({ runs }: { runs: ExecutionResult[] }) {
 }
 
 export function ExerciseEditor({ stage, exercise, draftKey, hints, priorPass, feedback, onHint, onAttempt, onBusy, onDraftFailure }: {
-  stage: 'Modify' | 'Make'; exercise: Exercise; draftKey: string; hints: HintLevel[];
+  stage: 'Modify' | 'Build' | 'Make'; exercise: Exercise; draftKey: string; hints: HintLevel[];
   priorPass: boolean; feedback?: TeachingProse; onHint: (level: HintLevel) => void;
   onAttempt: (attempt: Submission) => void; onBusy: (value: boolean) => void; onDraftFailure: (value: boolean) => void;
 }) {
@@ -145,13 +147,15 @@ export function ExerciseEditor({ stage, exercise, draftKey, hints, priorPass, fe
           {exercise.hints.map((hint, index) => hints.includes(hint.level)
             ? <p className="pilot-feedback" key={hint.level}><TeachingProseText content={hint.text} /></p>
             : <div className="pilot-controls" key={hint.level}>
-              <button disabled={busy || index > hints.length} onClick={() => onHint(hint.level)}>
-                {hint.level === 'H3' ? 'Reveal implementation hint' : `Show hint ${index + 1}`}
+              <button disabled={busy || !exercise.hints.slice(0, index).every(({ level }) => hints.includes(level))} onClick={() => onHint(hint.level)}>
+                {hint.level === 'H4' ? 'Reveal complete solution (solution-level help)' : hint.level === 'H3' ? 'Reveal implementation hint' : `Show hint ${index + 1}`}
               </button>
             </div>)}
-          <label htmlFor={`${exercise.id}-editor`}>{stage} Python code</label>
-          <textarea id={`${exercise.id}-editor`} rows={8} value={code} spellCheck={false} autoCapitalize="off"
-            autoComplete="off" readOnly={busy} onChange={(event) => saveCode(event.target.value)} />
+          <p className="python-editor-label">{stage} Python code</p>
+          <Suspense fallback={<p role="status">Loading the Python editor…</p>}>
+            <PythonEditor id={`${exercise.id}-editor`} label={`${stage} Python code`}
+            value={code} readOnly={busy} onChange={saveCode} />
+          </Suspense>
           <p className="muted" role="status">{saveFailed ? 'Draft could not be saved in this browser.' : 'Drafts are saved in this browser.'}</p>
           {saveFailed && <button disabled={busy} onClick={() => saveCode(code)}>Retry saving draft</button>}
           <div className="pilot-controls">

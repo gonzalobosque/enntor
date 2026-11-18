@@ -6,7 +6,7 @@ const name = (text: string): TeachingInline => ({ role: 'variable', text });
 const code = (text: string): TeachingInline => ({ role: 'code', text });
 
 const version = '1.0.0';
-const lessonVersion = '1.2.0';
+const lessonVersion = '1.3.0';
 const lessonId = 'F01.01';
 const execution = {
   engineId: pythonEngineId, language: 'python', runtimeVersion: pythonVersion,
@@ -25,11 +25,17 @@ const predict: Exercise = {
   },
 };
 const modify: Exercise = {
-  id: 'F01.01.modify', version, lessonId, title: 'Apply the multiplier to the whole sum', kind: 'modify',
+  id: 'F01.01.modify', version: '1.1.0', lessonId, title: 'Apply the multiplier to the whole sum', kind: 'modify',
   prompt: ['Change ', fn('total()'), ' so it first adds ', name('base'), ' and ', name('extra'),
     ', then returns three times that sum. Both inputs are integers and may be zero or negative. Return the result from the function.'],
   conceptIds: predict.conceptIds, difficulty: 1,
-  hints: [{ level: 'H1', text: ['Group ', code('base + extra'), ' with parentheses or assign the sum to a name before multiplying.'] }],
+  hints: [
+    { level: 'H0', text: ['Try the example with ', name('base'), ' equal to 4 and ', name('extra'),
+      ' equal to 6. Which part of the result changes when you change the first input?'] },
+    { level: 'H1', text: ['Trace the current expression. What is being repeated three times? Compare that with the quantity the requirement describes.'] },
+    { level: 'H2', text: ['Work out the combined amount as its own step. Use that amount to calculate the result.'] },
+    { level: 'H4', text: ['Inside ', fn('total()'), ', write ', code('return (base + extra) * 3'), '.'] },
+  ],
   starterCode: 'def total(base, extra):\n    return base + extra * 3\n',
   execution: { ...execution, entryPoint: 'total' },
   grading: {
@@ -40,6 +46,39 @@ const modify: Exercise = {
       { id: 'negative', input: [-4, 2], expected: -6 },
     ],
     configuration: {},
+  },
+};
+
+export const buildPlan = {
+  prompt: ['A venue opens ', name('capacity'), ' seats per row for two rows. It then sets aside ',
+    name('reserved'), ' seats in total. What should the function return?'],
+  symbols: ['capacity', 'reserved', 'available'],
+  options: [
+    { id: 'remaining', text: 'The number of seats left after subtracting the reservation from the two-row total.' },
+    { id: 'per-row', text: 'The number of seats left after subtracting the reservation from each row.' },
+  ],
+  correct: 'remaining',
+  syntax: [code('def'), ' starts the function declaration. ', fn('available()'), ' takes ',
+    name('capacity'), ' and ', name('reserved'), ' as parameters. The colon starts the body. Indent the body by four spaces and use ',
+    code('return'), ' to hand back the value.'],
+};
+
+const build: Exercise = {
+  id: 'F01.01.build', version, lessonId, title: 'Build a seat-count function', kind: 'write',
+  prompt: ['The declaration is supplied. Replace ', code('pass'), ' with an indented ', code('return'), ' statement in ', fn('available()'),
+    '. Start with twice ', name('capacity'), ' and subtract ', name('reserved'),
+    ' once. For 6 seats per row and 3 reserved seats, return 9. Inputs are nonnegative integers and reservations never exceed capacity across both rows.'],
+  conceptIds: predict.conceptIds, difficulty: 1,
+  starterCode: 'def available(capacity, reserved):\n    pass  # Replace with your return statement.\n',
+  hints: [{ level: 'H0', text: ['Trace the two quantities separately before writing the expression.'] }],
+  execution: { ...execution, entryPoint: 'available' },
+  grading: {
+    graderId: 'return-value', graderVersion: version, rubric: 'Return the number of available seats.',
+    publicCases: [
+      { id: 'ordinary', input: [6, 3], expected: 9 },
+      { id: 'all-reserved', input: [4, 8], expected: 0 },
+      { id: 'no-reservations', input: [7, 0], expected: 14 },
+    ], configuration: {},
   },
 };
 
@@ -88,24 +127,19 @@ export const pilotPack = {
     id: lessonId, version: lessonVersion, moduleId: 'F01', title: 'Expressions and evaluation order',
     objectives: ['Distinguish expressions, statements, and displayed output.',
       'Trace dependencies backwards from an output, then execute the program forwards.'],
-    prerequisites: [], estimatedMinutes: 12, exerciseIds: [predict.id, modify.id, make.id, transfer.id],
-    progression: { requiredExerciseIds: [predict.id, modify.id, make.id], requiresIndependentTransfer: true },
+    prerequisites: [], estimatedMinutes: 12, exerciseIds: [predict.id, modify.id, build.id, make.id, transfer.id],
+    progression: { requiredExerciseIds: [predict.id, modify.id, build.id, make.id], requiresIndependentTransfer: true },
     teachingBlocks: [
       { id: 'F01.01.explain', type: 'paragraph', content: [
         'An expression produces a value. An assignment is a statement that evaluates the expression on its right and binds the result to a name. Calling ',
         { role: 'function', text: 'print()' }, ' displays a value.',
-      ] },
-      { id: 'F01.01.trace', type: 'paragraph', content: [
-        'Start at the output and ask what it needs. In the prediction below, ',
-        { role: 'function', text: 'print()' }, ' needs ', { role: 'variable', text: 'base' },
-        ' and ', { role: 'variable', text: 'extra' }, '. Then follow the assignments from top to bottom.',
       ] },
       { id: 'F01.01.pitfall', type: 'warning', content: [
         'Multiplication groups more tightly than addition. Use parentheses when the sum needs to happen first.',
       ] },
       { id: 'F01.01.example', type: 'worked-example', language: 'python',
         code: 'score = 2 + 3 * 4\nprint(score)',
-        explanation: [fn('print()'), ' needs ', name('score'), '. First evaluate ', code('3 * 4'),
+        explanation: ['Start from the output and trace back to what it needs. Here, ', fn('print()'), ' needs ', name('score'), '. First evaluate ', code('3 * 4'),
           ', then add ', code('2'), '. The assignment binds ', code('14'), ' to ', name('score'),
           ', and the second line displays it. Parentheses around ', code('2 + 3'), ' would make Python add first.'] },
     ],
@@ -114,7 +148,7 @@ export const pilotPack = {
       { id: 'F01.01.tip2', text: 'Resolve inner dependencies using Python’s evaluation and short-circuit rules.', sourceRefs: ['P04'] },
     ],
   }],
-  exercises: [predict, modify, make, transfer],
+  exercises: [predict, modify, build, make, transfer],
 } satisfies CoursePack;
 
 export const predictionCoaching = {

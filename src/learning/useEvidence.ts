@@ -13,7 +13,7 @@ export function useEvidence(pack: ContentReference, lesson: ContentReference) {
   const [initial] = useState(() => {
     try {
       const history = readEvidence(lesson);
-      const current = history[0]?.lesson.version === lesson.version ? history[0] : undefined;
+      const current = history[0];
       return { history, current, error: false };
     } catch {
       return { history: [], current: undefined, error: true };

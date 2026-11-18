@@ -2,9 +2,11 @@
 
 ENNTOR is a teaching-first learning platform for independent problem solving. Its first planned Course Pack focuses on Python and applied AI/ML interview skills. The educational goal is to write correct, explainable code from scratch, repair mistakes, and transfer understanding to unfamiliar problems.
 
-## Current release · Milestone 2C
+## Current release · Milestone 2D
 
-The Climb offers one pilot lesson, **F01.01 · Expressions and evaluation order**. Learn from a worked example, commit a prediction, investigate the real Python result, modify a function, then write one from scratch. Finish saves the activity evidence and the optional Sweat check-in. The Gym and The Room remain previews.
+The Climb offers one pilot lesson, **F01.01 · Expressions and evaluation order**. Learn from a worked example, commit a prediction, investigate the real Python result, modify a function, plan and build a guided function, then write one from scratch. Finish saves completion and opens a separate learning report, where the optional Sweat check-in can be changed or skipped. The Gym and The Room remain previews.
+
+The CodeMirror Python editor uses syntax-aware indentation. Tab indents four spaces, Shift+Tab outdents, and Escape followed by Tab moves focus out. Use the standard undo and redo shortcuts for your platform.
 
 **Run** executes the editor as a script. **Check solution** calls the function with public cases and reports the verdict separately from console output. **Stop** terminates the active worker. Reset and Try again from scratch save edited code under Previous drafts before restoring starter code.
 
@@ -14,7 +16,7 @@ A passing Make result without hints or a prior pass on that exercise demonstrate
 
 Author teaching prose with ordinary strings and explicit inline spans tagged as function, variable, or code. The shared renderer applies the existing theme styles to Learn, Investigate, instructions, and hints.
 
-Drafts and versioned session evidence are saved to browser localStorage on the current origin. Save & Exit keeps the current session available from The Climb. Learning history shows prior submissions, and reopening a completed lesson displays the saved result. The pilot records checking time rather than time spent studying. Storage limits and browser data clearing apply. Use one editing tab per session. Learner evidence stays in the browser.
+Drafts and versioned session evidence are saved to browser localStorage on the current origin. Save for later keeps unfinished work available from The Climb. The saved report uses `#/climb/F01.01/results`. Learning history shows prior submissions, and reopening a completed lesson displays the saved result. The pilot records checking time rather than time spent studying. Storage limits and browser data clearing apply. Use one editing tab per session. Learner evidence stays in the browser.
 
 ### Python runtime
 
@@ -74,7 +76,7 @@ Reasoning-aware feedback is a fundamental goal. It should analyze an implementat
 ## Milestone roadmap
 
 1. **Application foundation** — navigation, theme, design tokens, and architectural contracts.
-2. **First teaching slice** — F01.01 pilot with explanation, prediction, execution, deterministic checks, and local drafts. Fresh independent transfer is reserved for later.
+2. **First teaching slice** — F01.01 pilot with explanation, prediction, execution, deterministic checks, and local drafts. The pilot includes Build, a blank-start Make task, and a fresh transfer option after implementation help.
 3. **Learning evidence and mentoring** — persist historical attempts and misconceptions safely, investigate eligible subscription-authorized ChatGPT integration, and evaluate reasoning-aware feedback.
 4. **Targeted practice and assessment** — introduce evidence-based Gym workouts and quiet Room simulations in small milestones.
 5. **Expansion** — grow validated course content, accounts/device continuity, and full offline capabilities through reviewed milestones.
@@ -90,3 +92,22 @@ For each release, run the production build and launch the application. For this 
 Review staged files and diffs before every commit. Ignore rules cover dependencies, build output, environment files, keys, local logs, and designated local learner-data folders. Ignore patterns are a convenience, so also inspect content for secrets and personal data. Keep real attempts, exports, credentials, and tokens outside tracked source. Never place secrets in Vite variables exposed to browser code. Use synthetic fixtures if later tests require learner examples.
 
 The public specifications generalize private learner and employer assessment details. The original documents and development history are retained privately.
+
+## Reviewing lesson changes
+
+- Read the activity as a learner, in display order. Check that every named symbol belongs to code already visible or is explicitly introduced.
+- Check that each explanation advances the lesson objective and that examples use their own names and data.
+- Try each hint in order. The first hint should prompt reasoning. Reserve exact code for labeled implementation or solution help.
+- Walk the transition from reading to Modify, then from the Build requirement to its declaration and return statement. Check that Make removes the scaffold and uses a different calculation.
+- Review edge cases, feedback wording, and accessibility in both themes. Automated reference checks only cover explicitly tagged symbols and activity metadata.
+
+### Browser verification
+
+With the development server running, install Playwright locally for verification without changing the lockfile.
+
+```sh
+npm install --no-save --package-lock=false playwright
+npx playwright install chromium
+ENNTOR_TEST_ORIGIN=http://127.0.0.1:5173 node scripts/check-pilot-editor.mjs
+ENNTOR_TEST_ORIGIN=http://127.0.0.1:5173 node scripts/check-pilot-results.mjs
+```

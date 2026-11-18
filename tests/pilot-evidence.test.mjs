@@ -3,7 +3,8 @@ import { test } from 'node:test';
 import { createServer } from 'vite';
 
 test('pilot completion separates activity, assistance, independence, and durable evidence', async () => {
-  const vite = await createServer({ server: { middlewareMode: true, ws: false } });
+  const vite = await createServer({ configFile: false, optimizeDeps: { noDiscovery: true },
+    server: { middlewareMode: true, ws: false } });
   const entries = new Map();
   const original = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
   Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: {
@@ -46,6 +47,36 @@ test('pilot completion separates activity, assistance, independence, and durable
   } finally {
     if (original) Object.defineProperty(globalThis, 'localStorage', original);
     else delete globalThis.localStorage;
+    await vite.close();
+  }
+});
+
+test('Build gates new completion while existing completions and rating history stay intact', async () => {
+  const vite = await createServer({ configFile: false, optimizeDeps: { noDiscovery: true },
+    server: { middlewareMode: true, ws: false } });
+  try {
+    const { learningState, finalizeEvidence, withSweatRating, sweatChoices } =
+      await vite.ssrLoadModule('/src/learning/evidence.ts');
+    const passed = (id) => ({ id, exercise: { id }, hints: [], grade: { verdict: 'passed' } });
+    const session = { followedUp: true, learnedAt: 'earlier',
+      prediction: { answer: '22', runs: [{ status: 'completed', stdout: '22' }] },
+      followUps: [], submissions: [passed('modify'), passed('make'), passed('build')] };
+    const check = (value) => learningState(value, 'modify', 'make', 'transfer', 'build');
+    assert.equal(check(session).canFinish, false);
+    const ready = { ...session, buildPlan: { correct: true } };
+    const finished = finalizeEvidence(ready, check(ready));
+    assert.equal(finished.completion.buildId, 'build');
+    assert.equal(finalizeEvidence(finished, check(finished)), finished);
+    const historical = { ...session, completion: { at: 'historical', sweat: 0, modifyId: 'modify',
+      makeId: 'make', independent: true } };
+    assert.equal(finalizeEvidence(historical, check(historical)), historical);
+    for (const value of [null, ...sweatChoices.map(([, score]) => score)]) {
+      const rated = withSweatRating(historical, value);
+      assert.equal(rated.completion.sweat, value);
+      assert.equal(rated.completion.at, 'historical');
+      assert.deepEqual(rated.submissions, historical.submissions);
+    }
+  } finally {
     await vite.close();
   }
 });

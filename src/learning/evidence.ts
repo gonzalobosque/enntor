@@ -32,6 +32,8 @@ export interface LessonEvidence {
   updatedAt: string;
   legacyDrafts: boolean;
   learnedAt?: string;
+  buildPlan?: { choice: string; correct: boolean; at: string };
+  buildChecks?: { choice: string; correct: boolean; at: string }[];
   transferOpenedAt?: string;
   sweat?: Sweat;
   prediction?: {
@@ -42,7 +44,7 @@ export interface LessonEvidence {
   followUps: { id: string; answer: string; expected: number; correct: boolean; at: string }[];
   hints: { exercise: ContentReference; level: HintLevel; at: string }[];
   submissions: Submission[];
-  completion?: { at: string; sweat: Sweat; modifyId: string; makeId: string; independent: boolean };
+  completion?: { at: string; sweat: Sweat; modifyId: string; buildId?: string; makeId: string; independent: boolean };
 }
 
 const prefix = 'enntor.evidence.v1.';
@@ -75,16 +77,32 @@ export function writeEvidence(session: LessonEvidence, expected?: LessonEvidence
 
 export const hasSolutionHelp = (hints: HintLevel[]) => hints.some((level) => level === 'H3' || level === 'H4');
 
-export function learningState(session: LessonEvidence, modify: string, make: string, transfer: string) {
+export function learningState(session: LessonEvidence, modify: string, make: string, transfer: string, build?: string) {
   const prediction = session.prediction?.runs.find((run) => run.status === 'completed');
   const investigated = !!prediction && (Number(prediction.stdout.trim()) === Number(session.prediction?.answer) ||
     session.followUps.some(({ correct }) => correct));
   const modified = session.submissions.find((item) => item.exercise.id === modify && item.grade?.verdict === 'passed');
+  const buildPass = session.submissions.find((item) => item.exercise.id === build && item.grade?.verdict === 'passed');
+  const built = !build || (!!session.buildPlan?.correct && !!buildPass);
   const made = session.submissions.filter((item) =>
     [make, transfer].includes(item.exercise.id) && item.grade?.verdict === 'passed');
   const independent = made.find((item) => item.hints.length === 0 && !item.priorPass);
   const qualifying = independent ?? made.find((item) => !hasSolutionHelp(item.hints));
-  return { prediction, investigated, modified, made, independent, qualifying,
-    activitiesComplete: !!(session.learnedAt && investigated && modified && made.length),
-    canFinish: !!(session.learnedAt && investigated && modified && qualifying) };
+  return { prediction, investigated, modified, built, buildPass, made, independent, qualifying,
+    activitiesComplete: !!(session.learnedAt && investigated && modified && built && made.length),
+    canFinish: !!(session.learnedAt && investigated && modified && built && qualifying) };
+}
+
+export function finalizeEvidence(session: LessonEvidence, state: ReturnType<typeof learningState>): LessonEvidence {
+  if (session.completion || !state.canFinish || !state.modified || !state.qualifying) return session;
+  const at = now();
+  return { ...session, updatedAt: at, completion: {
+    at, sweat: session.sweat ?? null, modifyId: state.modified.id, buildId: state.buildPass?.id,
+    makeId: state.qualifying.id, independent: !!state.independent,
+  } };
+}
+
+export function withSweatRating(session: LessonEvidence, sweat: Sweat): LessonEvidence {
+  if (!session.completion || session.completion.sweat === sweat) return session;
+  return { ...session, updatedAt: now(), sweat, completion: { ...session.completion, sweat } };
 }

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { predictionCoaching } from '../courses/f01-01';
+import { buildPlan, predictionCoaching } from '../courses/f01-01';
 import { loadPilot } from '../courses/load-pilot';
 import type { Exercise, HintLevel } from '../courses/contracts';
 import { runExercise } from '../execution/grading';
@@ -7,24 +7,25 @@ import { pythonEngine } from '../execution/python-engine';
 import { TeachingText, TeachingProseText } from './TeachingText';
 import { PredictionReview } from './PredictionReview';
 import { Console, ExerciseEditor } from './ExerciseEditor';
-import { hasSolutionHelp, learningState, now } from './evidence';
+import { finalizeEvidence, hasSolutionHelp, learningState, now, withSweatRating } from './evidence';
 import type { Submission } from './evidence';
 import { useEvidence } from './useEvidence';
-import { LessonFinish } from './LessonFinish';
+import { LessonReport } from './LessonReport';
+import { pilotResultsPath } from '../app/areas';
 
-const { pack, lesson, prediction, modification, make, transfer } = loadPilot();
+const { pack, lesson, prediction, modification, build, make, transfer } = loadPilot();
 export const pilotTitle = lesson.title;
 const lessonRef = { id: lesson.id, version: lesson.version };
-const stages = ['Learn', 'Predict', 'Investigate', 'Modify', 'Make', 'Finish'];
+const stages = ['Learn', 'Predict', 'Investigate', 'Modify', 'Build', 'Make', 'Finish'];
 
-export function PilotLesson() {
+export function PilotLesson({ results }: { results: boolean }) {
   const evidence = useEvidence(pack, lessonRef);
-  return <LessonSession key={evidence.session.id} evidence={evidence} />;
+  return <LessonSession key={evidence.session.id} evidence={evidence} results={results} />;
 }
 
-function LessonSession({ evidence }: { evidence: ReturnType<typeof useEvidence> }) {
+function LessonSession({ evidence, results }: { evidence: ReturnType<typeof useEvidence>; results: boolean }) {
   const { session, history, update, save, error, startAgain } = evidence;
-  const state = learningState(session, modification.id, make.id, transfer.id);
+  const state = learningState(session, modification.id, make.id, transfer.id, build.id);
   const [answer, setAnswer] = useState(session.prediction?.answer ?? '');
   const showTransfer = !!session.transferOpenedAt;
   const [predicting, setPredicting] = useState(false);
@@ -77,10 +78,12 @@ function LessonSession({ evidence }: { evidence: ReturnType<typeof useEvidence> 
       : [...old.submissions, attempt] }));
   }
 
-  function editor(exercise: Exercise, stage: 'Modify' | 'Make') {
-    const base = `enntor.draft.${exercise.id}.${exercise.version}`;
+  function editor(exercise: Exercise, stage: 'Modify' | 'Build' | 'Make') {
+    // Modify's starter and draft format did not change when its hints were revised.
+    const draftVersion = exercise.id === modification.id ? '1.0.0' : exercise.version;
+    const base = `enntor.draft.${exercise.id}.${draftVersion}`;
     const key = session.legacyDrafts && exercise.id === modification.id ? base : `${base}.${session.id}`;
-    const visibleHints = session.hints.filter((hint) => hint.exercise.id === exercise.id).map(({ level }) => level);
+    const visibleHints = session.hints.filter((hint) => hint.exercise.id === exercise.id && hint.exercise.version === exercise.version).map(({ level }) => level);
     const previous = history.filter(({ id }) => id !== session.id);
     const priorHints = previous.flatMap((item) => item.hints).filter((hint) => hint.exercise.id === exercise.id)
       .map(({ level }) => level);
@@ -95,11 +98,22 @@ function LessonSession({ evidence }: { evidence: ReturnType<typeof useEvidence> 
       onAttempt={(attempt) => record({ ...attempt, hints: [...new Set([...priorHints, ...attempt.hints])] })} />;
   }
 
-  const stage = session.completion ? 6 : state.canFinish ? 5 : state.modified ? 4 : state.investigated ? 3
+  const stage = session.completion ? 7 : state.canFinish ? 6 : state.built ? 5 : state.modified ? 4 : state.investigated ? 3
     : state.prediction ? 2 : session.learnedAt ? 1 : 0;
   const output = state.prediction?.stdout.trim();
   const lastRun = session.prediction?.runs.at(-1);
   const assistance = state.made.some((item) => item.hints.length > 0 || item.priorPass);
+
+  const blocked = predicting || !!busyCount || draftFailed;
+  const storageAlert = error && <div className="pilot-feedback" role="alert">
+    <p>Local evidence could not be saved or read. Keep this page open and retry. Another tab may have changed this session.</p>
+    {!results && <button onClick={() => save()}>Retry saving</button>}
+  </div>;
+
+  if (results) {
+    return <LessonReport title={lesson.title} session={session} storageAlert={storageAlert}
+      onSweat={(sweat) => save(withSweatRating(session, sweat), true)} />;
+  }
 
   return (
     <article className="pilot">
@@ -109,23 +123,27 @@ function LessonSession({ evidence }: { evidence: ReturnType<typeof useEvidence> 
       <p className="eyebrow">Pilot lesson · {lesson.id} · {lesson.estimatedMinutes} min</p>
       <h1>Expressions and <span>evaluation order</span></h1>
       <ol className="pilot-journey" aria-label="Lesson journey">
-        {stages.map((label, index) => <li key={label} aria-current={index === stage ? 'step' : undefined}
-          data-complete={index < stage}>{label}{index < stage && <span aria-label=" completed"> ✓</span>}</li>)}
+        {stages.map((label, index) => {
+          const historicalBuild = label === 'Build' && session.completion && !session.completion.buildId;
+          const complete = index < stage && !historicalBuild;
+          return <li key={label} aria-current={index === stage ? 'step' : undefined} data-complete={complete}>
+            {label}{complete && <span aria-label=" completed"> ✓</span>}
+            {historicalBuild && <span> · added later</span>}
+          </li>;
+        })}
       </ol>
       {!error && !draftFailed && !session.completion && history.some(({ id }) => id === session.id) &&
         <p className="muted">Progress saved on this browser.</p>}
-      {error && <div className="pilot-feedback" role="alert">
-        <p>Local evidence could not be saved or read. Keep this lesson open and retry. Another tab may have changed this session.</p>
-        <button onClick={() => save()}>Retry saving</button>
-      </div>}
+      {storageAlert}
+      {session.completion && <p className="pilot-success">Lesson completed and saved. <a className="pilot-inline-link" href={`#/${pilotResultsPath}`}>View learning report</a></p>}
+      <section className="pilot-section" aria-labelledby="learn-heading">
+        <h2 id="learn-heading">Learn · Trace backwards, execute forwards</h2>
+        {lesson.teachingBlocks.filter(({ type }) => type !== 'warning').map((block) => <TeachingText key={block.id} block={block} />)}
+        {!session.learnedAt && !session.completion && <div className="pilot-controls">
+          <button className="pilot-primary" onClick={() => update((old) => ({ ...old, learnedAt: now() }))}>Continue to Predict</button>
+        </div>}
+      </section>
       {!session.completion && <>
-        <section className="pilot-section" aria-labelledby="learn-heading">
-          <h2 id="learn-heading">Learn · Trace backwards, execute forwards</h2>
-          {lesson.teachingBlocks.filter(({ type }) => type !== 'warning').map((block) => <TeachingText key={block.id} block={block} />)}
-          {!session.learnedAt && <div className="pilot-controls">
-            <button className="pilot-primary" onClick={() => update((old) => ({ ...old, learnedAt: now() }))}>Continue to Predict</button>
-          </div>}
-        </section>
         {session.learnedAt && <section className="pilot-section" aria-labelledby="predict-heading">
           <h2 id="predict-heading">Predict</h2>
           <p><TeachingProseText content={prediction.prompt} /></p>
@@ -151,16 +169,50 @@ function LessonSession({ evidence }: { evidence: ReturnType<typeof useEvidence> 
           onFollowUp={(submitted, correct) => update((old) => ({ ...old, followUps: [...old.followUps,
             { id: crypto.randomUUID(), answer: submitted, correct, expected: predictionCoaching.followUp.expected, at: now() }] }))} />}
         {state.investigated && editor(modification, 'Modify')}
-        {state.modified && editor(make, 'Make')}
-        {state.modified && assistance && !state.independent && !showTransfer && <div className="pilot-controls">
+        {state.modified && <section className="pilot-section" aria-labelledby="build-plan-heading">
+          <h2 id="build-plan-heading">Build · Plan the function</h2>
+          <p><TeachingProseText content={buildPlan.prompt} /></p>
+          <p>Inputs go in the declaration. Decide what the output represents before writing the body.</p>
+          <fieldset disabled={session.buildPlan?.correct}>
+            <legend>Choose the intended result</legend>
+            {buildPlan.options.map(({ id, text }) => <label key={id}>
+              <input type="radio" name="build-plan" checked={session.buildPlan?.choice === id}
+                onChange={() => update((old) => {
+                  const check = { choice: id, correct: id === buildPlan.correct, at: now() };
+                  return { ...old, buildPlan: check, buildChecks: [...(old.buildChecks ?? []), check] };
+                })} /> {text}
+            </label>)}
+          </fieldset>
+          {session.buildPlan && <p role="status">{session.buildPlan.correct ? 'That matches the requirement.'
+            : 'Try again. The reservation applies to the whole venue once.'}</p>}
+          {session.buildPlan?.correct && <p><TeachingProseText content={buildPlan.syntax} /></p>}
+        </section>}
+        {state.modified && session.buildPlan?.correct && editor(build, 'Build')}
+        {state.built && editor(make, 'Make')}
+        {state.built && assistance && !state.independent && !showTransfer && <div className="pilot-controls">
           <button disabled={!!busyCount} onClick={() => update((old) => ({ ...old, transferOpenedAt: now() }))}>Try a fresh Make problem</button>
         </div>}
-        {state.modified && showTransfer && editor(transfer, 'Make')}
+        {state.built && showTransfer && editor(transfer, 'Make')}
       </>}
-      <LessonFinish title={lesson.title} session={session}
-        onSweat={(sweat) => update((old) => ({ ...old, sweat }))} state={state} blocked={predicting || !!busyCount || draftFailed}
-        onFinish={(completion) => update((old) => ({ ...old, completion }), true)}
-        onExit={() => { if (save()) window.location.hash = '/climb'; }} onRestart={startAgain} />
+      <section className="pilot-section" aria-labelledby="finish-heading">
+        <h2 id="finish-heading">Finish</h2>
+        {session.completion ? (
+          <div className="pilot-controls"><button onClick={startAgain}>Start another lesson session</button></div>
+        ) : (
+          <>
+            {!state.canFinish && <p>{state.built && state.made.length
+              ? 'The passing Make solution used implementation help. Pass the fresh Make problem to finish.'
+              : 'Complete the prediction review and pass Modify, Build, and Make to finish.'}</p>}
+            <div className="pilot-controls">
+              {state.canFinish ? <button className="pilot-primary" disabled={blocked} onClick={() => {
+                if (update((old) => finalizeEvidence(old, state), true)) window.location.hash = '/' + pilotResultsPath;
+              }}>Finish lesson</button> : <button disabled={blocked} onClick={() => {
+                if (save()) window.location.hash = '/climb';
+              }}>Save for later</button>}
+            </div>
+          </>
+        )}
+      </section>
       <details className="pilot-section">
         <summary>Learning history ({history.length} {history.length === 1 ? 'session' : 'sessions'})</summary>
         {history.map((item) => <details key={item.id}>

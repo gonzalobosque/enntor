@@ -89,3 +89,11 @@ The pilot stores one versioned localStorage record per lesson session. Predictio
 Evidence and drafts live in the current browser origin. Existing Modify drafts remain readable in the initial pilot session, and subsequent sessions use separate draft keys. The store has no backend, sync, account identity, or remote transmission. Browser storage is clearable and quota-limited. Concurrent editing is unsupported, and writes detect a changed saved snapshot before saving. Sleep or time between sessions is excluded from check duration.
 
 Make checks distinguish unaided work from conceptual help, implementation help, and repeated passes. Conceptual hints allow lesson completion with an assisted result. Implementation help requires another passing exercise, so the pilot offers a separate Make transfer problem. Reopening a finished session displays its saved evidence. A separate session requires an explicit action.
+
+## E11 · Guided construction, editor, and lesson report
+
+Build records a requirement check and a graded scaffolded function before Make. The stage teaches the declaration and indented return statement with a subtractive problem before asking the learner to write a different function from scratch. Tagged teaching symbols are checked against activity-scoped inventories. The README defines the human checks for teaching order and hint quality.
+
+CodeMirror 6 is loaded when an exercise editor opens. Its Python parser governs indentation and highlighting. Draft text uses the existing draft keys and persistence behavior. Modify's hint revision has a new exercise version and retains its prior draft key.
+
+The version 1 local evidence record gained optional Build fields. Earlier sessions and completion timestamps are retained. Unfinished sessions resume with the Build requirement, and their existing submissions remain readable. Finish writes completion before opening the report route. Ratings update that completion in place, and older completions remain valid without Build evidence.
