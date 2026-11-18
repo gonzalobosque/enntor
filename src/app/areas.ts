@@ -26,9 +26,11 @@ export const areas = [
 ] as const;
 
 export type AreaId = typeof areas[number]['id'];
-export type Route = 'home' | AreaId;
+export const pilotPath = 'climb/F01.01';
+export type Route = 'home' | AreaId | typeof pilotPath;
 
 export function readRoute(): Route {
   const path = window.location.hash.replace(/^#\/?/, '');
+  if (path === pilotPath) return pilotPath;
   return areas.find((area) => area.id === path)?.id ?? 'home';
 }

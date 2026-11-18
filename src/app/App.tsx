@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTheme } from '../platform/useTheme';
-import { areas, readRoute } from './areas';
-import type { AreaId, Route } from './areas';
+import { PilotLesson, pilotTitle } from '../learning/PilotLesson';
+import { areas, pilotPath, readRoute } from './areas';
+import type { AreaId } from './areas';
 
 function Artwork({ area }: { area: AreaId }) {
   return (
@@ -34,7 +35,7 @@ function Home() {
               <p className="card-verb">{area.verb}</p>
               <div className="card-title"><h2>{area.title}</h2><span className="arrow" aria-hidden="true">↗</span></div>
               <p className="card-description">{area.description}</p>
-              <span className="availability">Coming next</span>
+              <span className="availability">{area.id === 'climb' ? 'Pilot available' : 'Coming next'}</span>
             </div>
           </a>
         ))}
@@ -42,13 +43,13 @@ function Home() {
       <aside className="course-note" aria-label="First course pack">
         <div className="course-label"><span className="course-dot" /> First course pack</div>
         <div><h2>Python &amp; AI interview skills</h2><p>From knowing how it works to writing it yourself.</p></div>
-        <span className="course-status">In preparation</span>
+        <span className="course-status">One pilot lesson</span>
       </aside>
     </>
   );
 }
 
-function AreaPage({ route }: { route: Exclude<Route, 'home'> }) {
+function AreaPage({ route }: { route: AreaId }) {
   const area = areas.find((item) => item.id === route)!;
   return (
     <section className={`area-page page-${area.id}`} aria-labelledby="area-heading">
@@ -58,12 +59,19 @@ function AreaPage({ route }: { route: Exclude<Route, 'home'> }) {
           <p className="eyebrow">{area.verb}</p>
           <h1 id="area-heading">{area.title}</h1>
           <p className="detail-description">{area.detail}</p>
-          <div className="coming-panel">
+          {route === 'climb' ? (
+            <div className="coming-panel">
+              <span className="availability">One pilot lesson</span>
+              <h2>F01.01 · {pilotTitle}</h2>
+              <p>Practise the lesson and run real Python. This pilot sits outside curriculum progression.</p>
+              <a className="pilot-link" href={`#/${pilotPath}`}>Open pilot lesson →</a>
+            </div>
+          ) : <div className="coming-panel">
             <span className="availability">Coming next</span>
             <h2>This space is taking shape.</h2>
             <p>{area.upcoming}</p>
             <p className="muted">This release includes navigation and appearance settings. Learning activities will arrive in future milestones.</p>
-          </div>
+          </div>}
         </div>
         <Artwork area={area.id} />
       </div>
@@ -84,7 +92,7 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    const title = areas.find((area) => area.id === route)?.title ?? 'Make it your own.';
+    const title = route === pilotPath ? pilotTitle : areas.find((area) => area.id === route)?.title ?? 'Make it your own.';
     document.title = `ENNTOR — ${title}`;
     if (previousRoute.current !== route) {
       mainRef.current?.focus();
@@ -104,7 +112,7 @@ export function App() {
         <a className="brand" href="#/" aria-label="ENNTOR home"><span className="brand-mark" aria-hidden="true"><i /><i /><i /></span>ENNTOR<span className="brand-period">.</span></a>
         <nav aria-label="Main navigation">
           <a href="#/" aria-current={route === 'home' ? 'page' : undefined}>Home</a>
-          {areas.map((area) => <a key={area.id} href={`#/${area.id}`} aria-current={route === area.id ? 'page' : undefined}>{area.title}</a>)}
+          {areas.map((area) => <a key={area.id} href={`#/${area.id}`} aria-current={route === area.id ? 'page' : route === pilotPath && area.id === 'climb' ? 'location' : undefined}>{area.title}</a>)}
         </nav>
         <button className="theme-toggle" onClick={toggleTheme} aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`} title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}>
           <span aria-hidden="true">{theme === 'light' ? '☾' : '☀'}</span>
@@ -112,9 +120,9 @@ export function App() {
       </header>
       {saveError && <p className="save-warning" role="status">Your theme changed, but this browser couldn’t save it for your next visit.</p>}
       <main id="main" ref={mainRef} tabIndex={-1}>
-        {route === 'home' ? <Home /> : <AreaPage route={route} />}
+        {route === 'home' ? <Home /> : route === pilotPath ? <PilotLesson /> : <AreaPage route={route} />}
       </main>
-      <footer className="site-footer"><p>Progress you can put to work.</p><p>ENNTOR <span aria-hidden="true">/</span> Foundation preview</p></footer>
+      <footer className="site-footer"><p>Progress you can put to work.</p><p>ENNTOR <span aria-hidden="true">/</span> Learning pilot</p></footer>
     </div>
   );
 }

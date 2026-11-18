@@ -154,3 +154,30 @@ h1 span { color: var(--accent); }
   *, *::before, *::after { transition: none !important; scroll-behavior: auto !important; }
   .area-card:hover, .area-card:hover .arrow { transform: none; }
 }
+
+.pilot { max-width: 800px; margin: 0 auto; padding: 2rem 0 5rem; line-height: 1.6; }
+.pilot h1 { font-size: clamp(2rem, 6vw, 4rem); line-height: 1.08; }
+.pilot .eyebrow { margin: 1.5rem 0 .75rem; }
+.pilot-section { padding: 1.5rem 0; border-bottom: 1px solid var(--line); }
+.pilot-section h2 { margin-bottom: .75rem; }
+.pilot-section p + p { margin-top: .5rem; }
+.pilot pre, .pilot textarea, .pilot input {
+  background: var(--panel); color: var(--text); border: 1px solid var(--line);
+  border-radius: 8px; padding: .8rem; font: 1rem/1.5 ui-monospace, monospace;
+}
+.pilot pre { overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; }
+.pilot textarea { display: block; width: 100%; tab-size: 4; resize: vertical; }
+.pilot input { width: min(12rem, 100%); }
+.pilot label { display: block; margin: .75rem 0 .35rem; font-weight: 600; }
+.pilot-controls { display: flex; flex-wrap: wrap; gap: .5rem; margin: .75rem 0; }
+.pilot-controls button, .pilot-link {
+  border: 1px solid var(--line); border-radius: 8px; padding: .65rem .9rem;
+  background: var(--panel); color: var(--text); font: inherit;
+}
+.pilot-controls button:first-of-type, .pilot-link { background: var(--text); color: var(--background); }
+.pilot-controls button:disabled { opacity: .55; cursor: default; }
+.pilot-link { display: inline-block; margin-top: .75rem; }
+.pilot-feedback { margin-top: 1rem; padding: 1rem; border-left: 3px solid var(--accent); background: var(--panel); }
+.pilot-feedback h3 { margin: 0 0 .5rem; }
+.pilot-console > div, .pilot details { margin-top: .75rem; }
+.pilot-running { position: sticky; bottom: .5rem; padding: .5rem 1rem; background: var(--panel); }

@@ -20,3 +20,5 @@ local-data/
 .idea/
 .vscode/*
 !.vscode/extensions.json
+
+/public/python/

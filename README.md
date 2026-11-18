@@ -2,15 +2,17 @@
 
 ENNTOR is a teaching-first learning platform for independent problem solving. Its first planned Course Pack focuses on Python and applied AI/ML interview skills. The educational goal is to write correct, explainable code from scratch, repair mistakes, and transfer understanding to unfamiliar problems.
 
-## Current release · Milestone 1
+## Current release · Milestone 2A
 
-A responsive React application shell with three learning areas, browser navigation, and persistent light/dark mode.
+The Climb offers one pilot lesson, **F01.01 · Expressions and evaluation order**. Open the pilot, read the worked example, commit an output prediction, then run real Python and investigate the result. In Modify, edit a function and use Check solution to compare its return values against three public cases covering ordinary, zero, and negative inputs. The pilot sits outside curriculum progression. The Gym and The Room remain previews.
 
-- **The Climb** provides the future home for structured lessons.
-- **The Gym** provides the future home for targeted training and error correction.
-- **The Room** provides the future home for timed interview practice.
+Run executes the editor as a script and displays stdout, stderr, and exceptions. Check solution calls the function in a fresh worker for each case and reports the verdict separately. Stop terminates the active worker. The next run starts cleanly. Reset asks before replacing your draft with starter code. Editor text is saved in localStorage for the current browser and origin. Reloading restores the draft once you repeat the prediction, which is session-only.
 
-Each area currently opens an honest preview describing planned functionality. There are no executable lessons, Python runtime, grader, AI integration, accounts, or backend. No personal learner records are collected. Only the appearance preference is saved in the browser. Full offline functionality remains planned for a future milestone.
+### Python runtime
+
+The predev and prebuild scripts copy the pinned Pyodide assets from the installed dependency. The browser downloads them from the same origin when you first run code. There is no execution backend or external submission service.
+
+Browser Python is for local educational use with code you trust. The dedicated worker keeps Python off the UI thread. The pilot limits execution time and captured output and provides no browser globals through Pyodide's configured JS bridge. The browser controls memory, and this setup provides no hard memory or security isolation guarantee. Public test cases and verdicts can be inspected or modified in browser tools. Package installation, interactive stdin, and offline installation are outside the pilot.
 
 ## Install and develop
 
@@ -62,8 +64,8 @@ Reasoning-aware feedback is a fundamental goal. It should analyze an implementat
 
 ## Milestone roadmap
 
-1. **Application foundation** — this release, navigation, theme, design tokens, and architectural contracts.
-2. **First teaching slice** — validate one small structured course segment, prove Python execution with cancellation and deterministic grading, then connect teaching, hints, autosave, and fresh independent transfer.
+1. **Application foundation** — navigation, theme, design tokens, and architectural contracts.
+2. **First teaching slice** — F01.01 pilot with explanation, prediction, execution, deterministic checks, and local drafts. Fresh independent transfer is reserved for later.
 3. **Learning evidence and mentoring** — persist historical attempts and misconceptions safely, investigate eligible subscription-authorized ChatGPT integration, and evaluate reasoning-aware feedback.
 4. **Targeted practice and assessment** — introduce evidence-based Gym workouts and quiet Room simulations in small milestones.
 5. **Expansion** — grow validated course content, accounts/device continuity, and full offline capabilities through reviewed milestones.
