@@ -10,7 +10,10 @@ export interface ContentReference {
   version: ContentVersion;
 }
 
+export type TeachingInline = string | { role: 'function' | 'variable' | 'code'; text: string };
+
 export type TeachingBlock =
+  | { id: ContentId; type: 'paragraph' | 'warning'; content: TeachingInline[] }
   | { id: ContentId; type: 'explanation'; markdown: string }
   | { id: ContentId; type: 'worked-example'; language: string; code: string; explanation: string };
 

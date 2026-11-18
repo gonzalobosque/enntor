@@ -1,3 +1,5 @@
+import { TeachingText } from './TeachingText';
+import { PredictionReview } from './PredictionReview';
 import { useEffect, useRef, useState } from 'react';
 import { loadPilot } from '../courses/load-pilot';
 import type { ExecutionResult, GradeResult } from '../execution/contracts';
@@ -21,11 +23,11 @@ function Console({ runs }: { runs: ExecutionResult[] }) {
     <div role="status" className="pilot-console">
       {runs.map((result, index) => (
         <div key={result.requestId}>
-          <strong>{runs.length > 1 ? `Test ${index + 1} · ` : ''}{result.status}</strong>
+          <strong>{runs.length > 1 ? `Test ${index + 1} · ` : ''}Execution {result.status}</strong>
           {result.stdout && <pre>stdout{'\n'}{result.stdout}</pre>}
           {result.stderr && <pre>stderr{'\n'}{result.stderr}</pre>}
-          {result.error && <pre>{result.error.message}</pre>}
-          {result.status === 'completed' && !result.stdout && !result.stderr && <p>No console output.</p>}
+          {result.error && <pre>{result.status === 'error' ? 'Exception or runtime error\n' : ''}{result.error.message}</pre>}
+          {result.status === 'completed' && !result.stdout && !result.stderr && <p>{result.value !== undefined ? 'The function returned a value without printing.' : 'No console output.'}</p>}
         </div>
       ))}
     </div>
@@ -37,6 +39,7 @@ export const pilotTitle = lesson.title;
 export function PilotLesson() {
   const [answer, setAnswer] = useState('');
   const [committed, setCommitted] = useState<string>();
+  const [verified, setVerified] = useState(false);
   const [predictionRun, setPredictionRun] = useState<ExecutionResult>();
   const [code, setCode] = useState(readDraft);
   const [saveFailed, setSaveFailed] = useState(false);
@@ -103,12 +106,10 @@ export function PilotLesson() {
       <h1>{lesson.title}</h1>
       <section className="pilot-section" aria-labelledby="learn-heading">
         <h2 id="learn-heading">Trace backwards, execute forwards</h2>
-        {lesson.teachingBlocks.map((block) => block.type === 'explanation'
-          ? <p key={block.id}>{block.markdown}</p>
-          : <div key={block.id}><pre>{block.code}</pre><p>{block.explanation}</p></div>)}
+        {lesson.teachingBlocks.map((block) => <TeachingText key={block.id} block={block} />)}
       </section>
       <section className="pilot-section" aria-labelledby="predict-heading">
-        <h2 id="predict-heading">Predict → Run → Investigate</h2>
+        <h2 id="predict-heading">Predict</h2>
         <p>{prediction.prompt}</p>
         <pre>{prediction.starterCode}</pre>
         <form onSubmit={(event) => {
@@ -126,16 +127,13 @@ export function PilotLesson() {
           </div>
         </form>
         {predictionRun && <Console runs={[predictionRun]} />}
-        {output !== undefined && (
-          <div className="pilot-feedback">
-            <h3>Investigate</h3>
-            <p>{Number(committed) === Number(output) ? 'Your prediction matches.' : `You predicted ${committed}. Python printed ${output}.`}</p>
-            <p>{String(prediction.grading.configuration.explanation)}</p>
-            <p>Which part would you put in parentheses to make Python add first?</p>
-          </div>
-        )}
       </section>
-      {output !== undefined && (
+      {output !== undefined && committed !== undefined && (
+        <PredictionReview answer={committed} output={output}
+          explanation={String(prediction.grading.configuration.explanation)}
+          onVerified={() => setVerified(true)} />
+      )}
+      {output !== undefined && (verified || Number(committed) === Number(output)) && (
         <section className="pilot-section" aria-labelledby="modify-heading">
           <h2 id="modify-heading">Modify · {modification.title}</h2>
           <p>{modification.prompt}</p>
@@ -160,9 +158,22 @@ export function PilotLesson() {
               <p>{grade.verdict === 'passed' ? 'All public cases passed.' : grade.verdict === 'failed'
                 ? 'Some public cases failed. Compare the returned values with the expected values and check which operation runs first.'
                 : 'Check incomplete. See the execution output above.'}</p>
-              <ul>{grade.evidence.map((test) => (
-                <li key={test.id}>{test.passed ? 'Pass' : 'Fail'} · {test.id}. {test.message}</li>
-              ))}</ul>
+              <table className="pilot-tests">
+                <caption>Public return-value checks</caption>
+                <thead><tr><th scope="col">Inputs</th><th scope="col">Expected</th>
+                  <th scope="col">Actual</th><th scope="col">Status</th></tr></thead>
+                <tbody>{modification.grading.publicCases.map((test, index) => {
+                  const run = runs[index];
+                  const evidence = grade.evidence[index];
+                  return <tr key={test.id}>
+                    <td><code>{JSON.stringify(test.input)}</code></td>
+                    <td><code>{JSON.stringify(test.expected)}</code></td>
+                    <td><code>{run?.status === 'completed' ? JSON.stringify(run.value) : '—'}</code></td>
+                    <td>{evidence ? evidence.passed ? 'Passed' : 'Failed' : run ? 'Incomplete' : 'Not run'}</td>
+                  </tr>;
+                })}</tbody>
+              </table>
+              <p className="muted">These checks cover the listed cases. Lesson mastery requires independent practice.</p>
             </div>
           )}
         </section>

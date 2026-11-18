@@ -2,6 +2,7 @@ import type { CoursePack, Exercise } from './contracts';
 import { pythonEngineId, pythonVersion } from '../execution/python-config';
 
 const version = '1.0.0';
+const lessonVersion = '1.1.0';
 const lessonId = 'F01.01';
 const execution = {
   engineId: pythonEngineId, language: 'python', runtimeVersion: pythonVersion,
@@ -40,17 +41,28 @@ const modify: Exercise = {
 };
 
 export const pilotPack = {
-  schemaVersion: '1.0', version, id: 'python-ai-pilot',
+  schemaVersion: '1.0', version: lessonVersion, id: 'python-ai-pilot',
   title: 'Python & AI interview skills', description: 'A single lesson pilot.', subject: 'Python', language: 'en',
   modules: [{ id: 'F01', version, title: 'Execution, state and references', prerequisites: [], lessonIds: [lessonId] }],
   lessons: [{
-    id: lessonId, version, moduleId: 'F01', title: 'Expressions and evaluation order',
+    id: lessonId, version: lessonVersion, moduleId: 'F01', title: 'Expressions and evaluation order',
     objectives: ['Distinguish expressions, statements, and displayed output.',
       'Trace dependencies backwards from an output, then execute the program forwards.'],
     prerequisites: [], estimatedMinutes: 8, exerciseIds: [predict.id, modify.id],
     progression: { requiredExerciseIds: [predict.id, modify.id], requiresIndependentTransfer: false },
     teachingBlocks: [
-      { id: 'F01.01.explain', type: 'explanation', markdown: 'An expression produces a value. An assignment is a statement that evaluates the expression on its right and binds the result to a name. A call to print displays a value. To trace output, start by asking which values print needs, then follow the statements from top to bottom.' },
+      { id: 'F01.01.explain', type: 'paragraph', content: [
+        'An expression produces a value. An assignment is a statement that evaluates the expression on its right and binds the result to a name. Calling ',
+        { role: 'function', text: 'print()' }, ' displays a value.',
+      ] },
+      { id: 'F01.01.trace', type: 'paragraph', content: [
+        'Start at the output and ask what it needs. In the prediction below, ',
+        { role: 'function', text: 'print()' }, ' needs ', { role: 'variable', text: 'base' },
+        ' and ', { role: 'variable', text: 'extra' }, '. Then follow the assignments from top to bottom.',
+      ] },
+      { id: 'F01.01.pitfall', type: 'warning', content: [
+        'Multiplication groups more tightly than addition. Use parentheses when the sum needs to happen first.',
+      ] },
       { id: 'F01.01.example', type: 'worked-example', language: 'python',
         code: 'score = 2 + 3 * 4\nprint(score)',
         explanation: 'The print call depends on score. On the first line, 3 * 4 gives 12, then 2 + 12 gives 14. Assignment binds 14 to score. The second line displays 14. Parentheses around 2 + 3 would make Python add first.' },
@@ -62,3 +74,15 @@ export const pilotPack = {
   }],
   exercises: [predict, modify],
 } satisfies CoursePack;
+
+export const predictionCoaching = {
+  alternativeAnswer: 30,
+  possibleReasoning: 'You may have added 4 and 6 first, then multiplied the sum by 3. That gives (4 + 6) * 3 = 30.',
+  actualReasoning: 'Python multiplies 6 by 3 first in this expression, then adds 4. That gives 4 + (6 * 3) = 22.',
+  followUp: {
+    code: 'base = 3\nextra = base + 2\nprint(base + extra * 2)',
+    expected: 13,
+    hint: 'Work out extra first. On the final line, identify the two values joined by * before adding base.',
+    explanation: 'extra is 5. Multiplication gives 5 * 2 = 10, then adding base gives 13.',
+  },
+};
