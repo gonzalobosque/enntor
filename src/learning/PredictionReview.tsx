@@ -1,8 +1,10 @@
+import type { TeachingBlock } from '../courses/contracts';
+import { TeachingText } from './TeachingText';
 import { useState } from 'react';
 import { predictionCoaching } from '../courses/f01-01';
 
-export function PredictionReview({ answer, output, explanation, onVerified }: {
-  answer: string; output: string; explanation: string; onVerified: () => void;
+export function PredictionReview({ answer, output, explanation, warning, onVerified }: {
+  answer: string; output: string; explanation: string; warning?: TeachingBlock; onVerified: () => void;
 }) {
   const matched = Number(answer) === Number(output);
   const suggested = !matched && Number(answer) === predictionCoaching.alternativeAnswer;
@@ -14,7 +16,7 @@ export function PredictionReview({ answer, output, explanation, onVerified }: {
   return (
     <section className="pilot-section" aria-labelledby="investigate-heading">
       <h2 id="investigate-heading">Investigate</h2>
-      <p>{matched ? 'Your prediction matches.' : `You predicted ${answer}. Python printed ${output}.`}</p>
+      <p className={matched ? 'pilot-success' : undefined}>{matched ? 'Your prediction matches.' : `You predicted ${answer}. Python printed ${output}.`}</p>
       {suggested ? (
         <>
           <p>{predictionCoaching.possibleReasoning}</p>
@@ -31,6 +33,7 @@ export function PredictionReview({ answer, output, explanation, onVerified }: {
             : 'Thanks for clarifying. Start with the assignments and trace each dependency in the next example.'}</p>}
         </>
       ) : <p>{explanation}</p>}
+      {warning && <TeachingText block={warning} />}
       {!matched && (
         <div className="pilot-feedback">
           <h3>Check your understanding</h3>
@@ -49,10 +52,10 @@ export function PredictionReview({ answer, output, explanation, onVerified }: {
                 setFollowUp(event.target.value);
                 setResult(undefined);
               }} />
-              <button disabled={result === 'correct' || !/^[+-]?\d+$/.test(followUp.trim())}>Check prediction</button>
+              <button className="pilot-primary" disabled={result === 'correct' || !/^[+-]?\d+$/.test(followUp.trim())}>Check prediction</button>
             </div>
           </form>
-          <p role="status">{result === 'correct' ? `That matches. ${check.explanation}`
+          <p role="status" className={result === 'correct' ? 'pilot-success' : undefined}>{result === 'correct' ? `That matches. ${check.explanation}`
             : result === 'retry' ? `Try again. ${check.hint}` : ''}</p>
         </div>
       )}

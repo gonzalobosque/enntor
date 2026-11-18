@@ -10,24 +10,37 @@ const { lesson, prediction, modification } = loadPilot();
 const initialCode = modification.starterCode!;
 const draftKey = `enntor.draft.${modification.id}.${modification.version}`;
 
+const archiveKey = `${draftKey}.previous`;
+
 function readDraft() {
   try {
-    return localStorage.getItem(draftKey) ?? initialCode;
+    return localStorage.getItem(draftKey);
   } catch {
-    return initialCode;
+    return null;
   }
 }
 
+function readArchive(): string[] {
+  const entries: unknown = JSON.parse(localStorage.getItem(archiveKey) ?? '[]');
+  if (!Array.isArray(entries) || !entries.every((entry) => typeof entry === 'string')) {
+    throw new Error('Stored draft archive is invalid.');
+  }
+  return entries;
+}
+
 function Console({ runs }: { runs: ExecutionResult[] }) {
+  if (!runs.length) return null;
+  const last = runs[runs.length - 1];
+  const details = runs.filter((result) => result.stdout || result.stderr || result.error);
   return (
     <div role="status" className="pilot-console">
-      {runs.map((result, index) => (
+      <p><strong>Execution {last.status}</strong></p>
+      {details.map((result) => (
         <div key={result.requestId}>
-          <strong>{runs.length > 1 ? `Test ${index + 1} · ` : ''}Execution {result.status}</strong>
+          {runs.length > 1 && <strong>Test {runs.indexOf(result) + 1}</strong>}
           {result.stdout && <pre>stdout{'\n'}{result.stdout}</pre>}
           {result.stderr && <pre>stderr{'\n'}{result.stderr}</pre>}
           {result.error && <pre>{result.status === 'error' ? 'Exception or runtime error\n' : ''}{result.error.message}</pre>}
-          {result.status === 'completed' && !result.stdout && !result.stderr && <p>{result.value !== undefined ? 'The function returned a value without printing.' : 'No console output.'}</p>}
         </div>
       ))}
     </div>
@@ -41,7 +54,12 @@ export function PilotLesson() {
   const [committed, setCommitted] = useState<string>();
   const [verified, setVerified] = useState(false);
   const [predictionRun, setPredictionRun] = useState<ExecutionResult>();
-  const [code, setCode] = useState(readDraft);
+  const [savedDraft] = useState(readDraft);
+  const [code, setCode] = useState(savedDraft ?? initialCode);
+  const [draftNotice, setDraftNotice] = useState(savedDraft !== null && savedDraft !== initialCode ? 'Previous draft restored' : '');
+  const [archive, setArchive] = useState(() => {
+    try { return readArchive(); } catch { return []; }
+  });
   const [saveFailed, setSaveFailed] = useState(false);
   const [runs, setRuns] = useState<ExecutionResult[]>([]);
   const [grade, setGrade] = useState<GradeResult>();
@@ -54,6 +72,7 @@ export function PilotLesson() {
   }, []);
 
   function saveCode(value: string) {
+    setDraftNotice('');
     setCode(value);
     setRuns([]);
     setGrade(undefined);
@@ -63,6 +82,29 @@ export function PilotLesson() {
     } catch {
       setSaveFailed(true);
     }
+  }
+
+  function replaceDraft(value: string, notice: string) {
+    try {
+      const previous = readArchive();
+      const stored = localStorage.getItem(draftKey);
+      for (const draft of [stored, code]) {
+        if (draft !== null && draft !== initialCode && draft !== value && !previous.includes(draft)) {
+          previous.push(draft);
+        }
+      }
+      localStorage.setItem(archiveKey, JSON.stringify(previous));
+      setArchive(previous);
+      localStorage.setItem(draftKey, value);
+    } catch {
+      setDraftNotice('Could not safely save your draft. The editor was kept as-is.');
+      return;
+    }
+    setCode(value);
+    setRuns([]);
+    setGrade(undefined);
+    setSaveFailed(false);
+    setDraftNotice(notice);
   }
 
   async function execute(mode: 'predict' | 'run' | 'check') {
@@ -103,10 +145,10 @@ export function PilotLesson() {
     <article className="pilot">
       <a className="back-link" href="#/climb">← The Climb</a>
       <p className="eyebrow">Pilot lesson · {lesson.id} · {lesson.estimatedMinutes} min</p>
-      <h1>{lesson.title}</h1>
+      <h1>{lesson.title.split("evaluation order")[0]}<span>evaluation order</span></h1>
       <section className="pilot-section" aria-labelledby="learn-heading">
         <h2 id="learn-heading">Trace backwards, execute forwards</h2>
-        {lesson.teachingBlocks.map((block) => <TeachingText key={block.id} block={block} />)}
+        {lesson.teachingBlocks.filter((block) => block.type !== 'warning').map((block) => <TeachingText key={block.id} block={block} />)}
       </section>
       <section className="pilot-section" aria-labelledby="predict-heading">
         <h2 id="predict-heading">Predict</h2>
@@ -120,7 +162,7 @@ export function PilotLesson() {
           <div className="pilot-controls">
             <input id="prediction" value={answer} onChange={(event) => setAnswer(event.target.value)}
               readOnly={committed !== undefined} autoComplete="off" />
-            <button disabled={!numericAnswer || busy || output !== undefined}>
+            <button className="pilot-primary" disabled={!numericAnswer || busy || output !== undefined}>
               {committed === undefined ? 'Commit prediction & run' : 'Run prediction'}
             </button>
             {output === undefined && <button type="button" disabled={!busy} onClick={() => active.current?.abort()}>Stop</button>}
@@ -131,6 +173,7 @@ export function PilotLesson() {
       {output !== undefined && committed !== undefined && (
         <PredictionReview answer={committed} output={output}
           explanation={String(prediction.grading.configuration.explanation)}
+          warning={lesson.teachingBlocks.find((block) => block.type === 'warning')}
           onVerified={() => setVerified(true)} />
       )}
       {output !== undefined && (verified || Number(committed) === Number(output)) && (
@@ -144,18 +187,38 @@ export function PilotLesson() {
           <p className="muted" role="status">{saveFailed ? 'Draft could not be saved in this browser.' : 'Drafts are saved in this browser.'}</p>
           <div className="pilot-controls">
             <button disabled={busy} onClick={() => void execute('run')}>Run</button>
-            <button disabled={busy} onClick={() => void execute('check')}>Check solution</button>
+            <button className="pilot-primary" disabled={busy} onClick={() => void execute('check')}>Check solution</button>
             <button disabled={!busy} onClick={() => active.current?.abort()}>Stop</button>
             <button disabled={busy || code === initialCode} onClick={() => {
-              if (window.confirm('Replace this draft with the starter code?')) saveCode(initialCode);
+              if (window.confirm('Reset to starter code? Your draft will be saved under Previous drafts.')) {
+                replaceDraft(initialCode, 'Editor reset to starter code.');
+              }
             }}>Reset</button>
+            <button disabled={busy} onClick={() => {
+              if (window.confirm('Start from scratch? Your current draft will be saved under Previous drafts.')) {
+                replaceDraft(initialCode, 'Fresh attempt started.');
+              }
+            }}>Try again from scratch</button>
           </div>
+          {draftNotice && <p className="muted" role="status">{draftNotice}</p>}
+          {archive.length > 0 && (
+            <details>
+              <summary>Previous drafts ({archive.length})</summary>
+              <ol>{archive.map((draft, index) => <li key={index}>
+                <button type="button" disabled={busy || draft === code} onClick={() => {
+                  if (window.confirm('Restore this draft? Your current edits will be kept under Previous drafts.')) {
+                    replaceDraft(draft, 'Previous draft restored');
+                  }
+                }}>Restore draft {index + 1}</button>
+              </li>)}</ol>
+            </details>
+          )}
           <p className="muted">Run executes the editor as a script. Check solution calls your function with public test inputs.</p>
           <Console runs={runs} />
           {grade && (
             <div className="pilot-feedback" role="status">
               <h3>Test results</h3>
-              <p>{grade.verdict === 'passed' ? 'All public cases passed.' : grade.verdict === 'failed'
+              <p className={grade.verdict === 'passed' ? 'pilot-success' : undefined}>{grade.verdict === 'passed' ? 'All public cases passed.' : grade.verdict === 'failed'
                 ? 'Some public cases failed. Compare the returned values with the expected values and check which operation runs first.'
                 : 'Check incomplete. See the execution output above.'}</p>
               <table className="pilot-tests">

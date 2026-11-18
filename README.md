@@ -2,11 +2,11 @@
 
 ENNTOR is a teaching-first learning platform for independent problem solving. Its first planned Course Pack focuses on Python and applied AI/ML interview skills. The educational goal is to write correct, explainable code from scratch, repair mistakes, and transfer understanding to unfamiliar problems.
 
-## Current release · Milestone 2B
+## Current release · Milestone 2B.1
 
 The Climb offers one pilot lesson, **F01.01 · Expressions and evaluation order**. Open the pilot, read the worked example, commit an output prediction, then run real Python and investigate the result. For an incorrect answer, the Investigate step gives tracing guidance and asks for a fresh prediction before Modify. An answer of 30 triggers a tentative explanation the learner can confirm or reject. That response stays in the current session. In Modify, edit a function and use Check solution to compare its return values against three public cases covering ordinary, zero, and negative inputs. Each row shows the inputs, expected value, actual value, and test status. The pilot sits outside curriculum progression. The Gym and The Room remain previews.
 
-Run executes the editor as a script and displays stdout, stderr, and exceptions. Check solution calls the function in a fresh worker for each case and reports the verdict separately. Stop terminates the active worker. The next run starts cleanly. Reset asks before replacing your draft with starter code. Editor text is saved in localStorage for the current browser and origin. Reloading restores the draft once you repeat the prediction, which is session-only.
+Run executes the editor as a script and displays stdout, stderr, and exceptions. Check solution calls the function in a fresh worker for each case and reports the verdict separately. Stop terminates the active worker. The next run starts cleanly. Reset restores starter code in the current Modify activity. Try again from scratch starts a fresh Modify attempt with starter code and clears execution and grading feedback. Both ask first and keep edited code under Previous drafts, which can be restored. Editor text is saved in localStorage for the current browser and origin. Reloading restores the draft once you repeat the prediction, which is session-only.
 
 ### Python runtime
 
@@ -27,6 +27,7 @@ Open <http://127.0.0.1:5173>. Vite uses a strict development port and reports an
 
 ```sh
 npm run typecheck
+npm test
 npm run build
 npm run preview
 ```
