@@ -232,6 +232,7 @@ h1 span { color: var(--accent); }
 .pilot-inline-link { text-decoration: underline; text-underline-offset: .17em; }
 
 .pilot-section .pilot-stage-heading {
+  text-transform: uppercase;
   font-family: 'Space Grotesk', sans-serif;
   font-weight: 700;
   font-size: 1.5rem;

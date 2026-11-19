@@ -28,10 +28,10 @@ try {
         node.append(probe);
         const matchingAccent = css.color === getComputedStyle(probe).color;
         probe.remove();
-        return { name: node.textContent, font: css.fontFamily, weight: css.fontWeight, matchingAccent };
+        return { name: node.textContent, font: css.fontFamily, weight: css.fontWeight, transform: css.textTransform, matchingAccent };
       }));
       assert.deepEqual(headings.map(({ name }) => name), ['Learn', 'Predict', 'Investigate', 'Modify', 'Build', 'Make']);
-      assert(headings.every(({ font, weight, matchingAccent }) => font.includes('Space Grotesk') && weight === '700' && matchingAccent));
+      assert(headings.every(({ font, weight, transform, matchingAccent }) => font.includes('Space Grotesk') && weight === '700' && transform === 'uppercase' && matchingAccent));
       assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
     }
   };

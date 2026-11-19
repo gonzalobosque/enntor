@@ -85,8 +85,9 @@ const build: Exercise = {
 
 const make: Exercise = {
   id: 'F01.01.make', version, lessonId, title: 'Write a theatre receipt function', kind: 'write',
-  prompt: ['Define ', fn('receipt()'), ' with integer parameters ', name('tickets'), ' and ', name('price'),
-    ', in that order. Each ticket costs ', name('price'), ' credits. Charge a fixed booking fee of 4 credits once per order, even for zero tickets. Return the total as an integer. Inputs are nonnegative. For example, 3 tickets at 7 credits cost 25 credits.'],
+  prompt: ['A theatre charges the advertised price for each ticket and a flat booking fee of 4 credits per order, even for an order with zero tickets. Calculate the receipt total. Define ',
+    fn('receipt()'), ' with nonnegative integer parameters ', name('tickets'), ' (the ticket count) and ',
+    name('price'), ' (the price per ticket), in that order. Return the total as an integer in credits. An order for 3 tickets at 7 credits per ticket costs 25 credits.'],
   conceptIds: predict.conceptIds, difficulty: 1, starterCode: '# Write the full function here.\n',
   hints: [
     { level: 'H0', text: ['Think about which cost repeats with ', name('tickets'), ' and which cost is charged once.'] },
@@ -106,8 +107,9 @@ const make: Exercise = {
 
 const transfer: Exercise = {
   id: 'F01.01.make-transfer', version, lessonId, title: 'Write a score adjustment function', kind: 'transfer',
-  prompt: ['Define ', fn('adjust_score()'), ' with integer parameters ', name('score'), ' and ', name('penalty'),
-    ', in that order. Double the score, then subtract the penalty and return the integer result. Inputs may be zero or signed. For a score of 7 and a penalty of 3, return 11.'],
+  prompt: ['In this tournament, a player’s original points are worth twice their face value, with any penalty applied to the final total. Calculate the final score. Define ',
+    fn('adjust_score()'), ' with integer parameters ', name('score'), ' (original points) and ',
+    name('penalty'), ' (points deducted), in that order. Either input may be zero or negative. A negative penalty is a credit. Return the final score as an integer. A player with 7 original points and a 3-point penalty finishes with 11.'],
   conceptIds: predict.conceptIds, difficulty: 1, starterCode: '# Write the full function here.\n', hints: [],
   execution: { ...execution, entryPoint: 'adjust_score' },
   grading: {
