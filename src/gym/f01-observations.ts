@@ -8,7 +8,7 @@ const climbExercises = new Set(['F01.01.modify', 'F01.01.build', 'F01.01.make', 
 const makeExercises = new Set(['F01.01.make', 'F01.01.make-transfer']);
 
 function submissionObservation(submission: Submission, source: PracticeObservation['source'],
-  independent: boolean): PracticeObservation | undefined {
+  independent: boolean, nudged = false): PracticeObservation | undefined {
   const { id, grade, hints, exercise, finishedAt, startedAt } = submission;
   if (grade?.verdict !== 'passed' && grade?.verdict !== 'failed') return;
   const passed = grade.verdict === 'passed';
@@ -19,8 +19,8 @@ function submissionObservation(submission: Submission, source: PracticeObservati
     : hints.length ? ' Used conceptual hints.' : '';
   return {
     id, source, activity: exercise.id, at: finishedAt ?? startedAt, result: passed ? 'pass' : 'miss',
-    independent: passed && independent, assisted: hints.length > 0,
-    description: `${context}: the ${assessment} ${passed ? independent ? 'passed independently' : 'passed' : 'did not pass all public checks'}.${help}`,
+    independent: passed && independent, assisted: hints.length > 0 || nudged,
+    description: `${context}: the ${assessment} ${passed ? independent ? 'passed independently' : 'passed' : 'did not pass all public checks'}.${help}${nudged ? ' A conceptual nudge was shown before this check.' : ''}`,
   };
 }
 
@@ -53,7 +53,7 @@ export function f01Observations(sessions: LessonEvidence[], records: GymRecord[]
   }
   for (const record of records) {
     if (record.kind !== 'attempt' || record.conceptId !== f01Concept) continue;
-    const item = submissionObservation(record.submission, 'gym', record.independent);
+    const item = submissionObservation(record.submission, 'gym', record.independent, !!record.nudgeAttemptIds?.length);
     if (item) observations.push(item);
   }
   return observations;

@@ -2,7 +2,7 @@
 
 ENNTOR is a teaching-first learning platform for independent problem solving. Its first planned Course Pack focuses on Python and applied AI/ML interview skills. The educational goal is to write correct, explainable code from scratch, repair mistakes, and transfer understanding to unfamiliar problems.
 
-## Current release · Milestone 3A
+## Current release · Milestone 3B
 
 The Climb offers one pilot lesson, **F01.01 · Expressions and evaluation order**. Learn from a worked example, commit a prediction, investigate the real Python result, modify a function, plan and build a guided function, then write one from scratch. Finish saves completion and opens a separate learning report, where the optional Sweat check-in can be changed or skipped. The Gym offers one evaluation-order workout. The Room remains a preview.
 
@@ -22,7 +22,7 @@ Drafts and versioned session evidence are saved to browser localStorage on the c
 
 The Gym reads saved F01.01 predictions, follow-ups, exercise checks, and help used. It recommends optional reinforcement when there is little evidence or only a single miss. Two distinct misses on the same activity without a later pass can prompt targeted practice. A later independent result tempers that recommendation. Learner-confirmed explanations apply only to the original attempt. Sweat ratings provide context and do not affect recommendations.
 
-The warehouse-scale workout uses the same Python editor and public-test grader as The Climb. Gym evidence is saved separately in browser localStorage, with the workout, concept and evidence behind the recommendation attached to each attempt. A first passing check without recorded hints counts as independent on this workout only. Revealed hints remain associated with the workout, and repeated passes do not count as fresh independent evidence. Gym evidence stays in the current browser origin.
+The warehouse-scale workout uses the same Python editor and public-test grader as The Climb. Gym evidence is saved separately in browser localStorage, with the workout, concept and evidence behind the recommendation attached to each attempt. An optional warm-up reviews the idea without walking through the workout. After a failed check, a brief conceptual nudge can refer to the actual test evidence. Hints remain available on request. A first passing check without prior nudges or revealed hints counts as independent on this workout only. Revealed hints remain associated with the workout, and repeated passes do not count as fresh independent evidence. Gym evidence stays in the current browser origin.
 
 ### Python runtime
 

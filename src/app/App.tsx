@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { useTheme } from '../platform/useTheme';
-import { Gym } from '../gym/Gym';
 import { PilotLesson, pilotTitle } from '../learning/PilotLesson';
 import { areas, pilotPath, pilotResultsPath, readRoute } from './areas';
 import type { AreaId } from './areas';
+
+const Gym = lazy(async () => ({ default: (await import('../gym/Gym')).Gym }));
 
 function Artwork({ area }: { area: AreaId }) {
   return (
@@ -127,7 +128,7 @@ export function App() {
       </header>
       {saveError && <p className="save-warning" role="status">Your theme changed, but this browser couldn’t save it for your next visit.</p>}
       <main id="main" ref={mainRef} tabIndex={-1}>
-        {route === 'home' ? <Home /> : route === 'gym' ? <Gym /> : route === pilotPath || route === pilotResultsPath ? <PilotLesson results={route === pilotResultsPath} /> : <AreaPage route={route} />}
+        {route === 'home' ? <Home /> : route === 'gym' ? <Suspense fallback={<p role="status">Loading The Gym…</p>}><Gym /></Suspense> : route === pilotPath || route === pilotResultsPath ? <PilotLesson results={route === pilotResultsPath} /> : <AreaPage route={route} />}
       </main>
       <footer className="site-footer"><p>Progress you can put to work.</p><p>ENNTOR <span aria-hidden="true">/</span> Learning pilot</p></footer>
     </div>

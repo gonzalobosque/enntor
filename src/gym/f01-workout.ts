@@ -33,3 +33,14 @@ export const cargoWorkout: Exercise = {
     configuration: {},
   },
 };
+
+export const evaluationWarmUp = {
+  id: 'evaluation-order.totals.v1',
+  title: 'Think about the total',
+  refresher: 'A total can contain several components. Name what the total includes and what the result should represent. When you trace an expression, check which operations group together before you evaluate it.',
+  simpleCase: 'Before writing code, choose a simple example in which one component is absent. What should the result represent in that case?',
+  focus: {
+    'repeated-errors': 'Use one small case to check the order in which you evaluate the expression.',
+    'try-unaided': 'Work through the small case yourself before opening any hints.',
+  },
+};

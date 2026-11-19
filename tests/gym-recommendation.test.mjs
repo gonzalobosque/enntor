@@ -54,6 +54,10 @@ test('Gym recommendations follow observations, corrections, and help instead of 
     const misses = [attempt('g1', 5, 'failed', false), attempt('g2', 6, 'failed', false)];
     assert.equal(recommend([], misses).reason, 'repeated-errors');
     assert.equal(recommend([], [...misses, attempt('g3', 7, 'passed', false, ['H0'])]).reason, 'try-unaided');
+    const coached = { ...attempt('g3', 7, 'passed', false), nudgeAttemptIds: ['g1'] };
+    const afterCoaching = recommend([rejected, unconfirmed], [...misses, coached]);
+    assert.equal(afterCoaching.reason, 'try-unaided');
+    assert.deepEqual(afterCoaching.evidence.map(({ id }) => id), ['g3', 'pred-1', 'pred-2']);
     assert.equal(recommend([rejected, unconfirmed], [...misses, attempt('g3', 7, 'passed', true)]).reason, 'independent-practice');
 
     const python = await loadPyodide();

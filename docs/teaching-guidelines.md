@@ -22,3 +22,9 @@ Reveal hints in order, starting with questions or observations. Record which hin
 - Do hints become more helpful without prematurely revealing the solution?
 - Are prerequisites taught or established?
 - Does successful completion produce appropriate independent evidence?
+
+## Warm-ups, nudges, and hints
+
+- A warm-up recalls the concept and invites a small mental check before the learner starts. Keep it optional and leave the workout's implementation open.
+- A conceptual nudge follows a checked mistake. Show a concrete observation, ask one question, and keep any explanation of the learner's reasoning tentative. Let the learner confirm or reject a specific explanation. Avoid repeating a nudge already shown for the workout.
+- A hint appears on request. It can give progressively more guidance than a nudge, up to clearly labeled solution help. Record nudge exposure and requested hints separately when interpreting later performance.
