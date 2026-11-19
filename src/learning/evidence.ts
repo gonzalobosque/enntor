@@ -16,6 +16,7 @@ export interface Submission {
   source: string;
   hints: HintLevel[];
   priorPass: boolean;
+  seenBefore?: boolean;
   startedAt: string;
   finishedAt?: string;
   elapsedMs?: number;
@@ -38,7 +39,7 @@ export interface LessonEvidence {
   sweat?: Sweat;
   prediction?: {
     id: string; exercise: ContentReference; answer: string; committedAt: string;
-    runs: ExecutionResult[]; hypothesis?: 'addition-first';
+    runs: ExecutionResult[]; hypothesis?: string;
     reasoning?: 'confirmed' | 'rejected';
   };
   followUps: { id: string; answer: string; expected: number; correct: boolean; at: string }[];
@@ -50,7 +51,11 @@ export interface LessonEvidence {
 const prefix = 'enntor.evidence.v1.';
 export const now = () => new Date().toISOString();
 
-export function readEvidence(lesson: ContentReference): LessonEvidence[] {
+export function readEvidence(lesson: ContentReference, packId?: string): LessonEvidence[] {
+  return readPackEvidence(packId).filter((value) => value.lesson.id === lesson.id);
+}
+
+export function readPackEvidence(packId?: string): LessonEvidence[] {
   const sessions: LessonEvidence[] = [];
   for (let index = 0; index < localStorage.length; index++) {
     const key = localStorage.key(index);
@@ -61,7 +66,7 @@ export function readEvidence(lesson: ContentReference): LessonEvidence[] {
     if (value.schemaVersion !== 1 || prefix + value.id !== key ||
         !Array.isArray(value.submissions) || !Array.isArray(value.hints) ||
         !Array.isArray(value.followUps)) throw new Error('Invalid local evidence.');
-    if (value.lesson.id === lesson.id) sessions.push(value);
+    if (packId === undefined || value.pack.id === packId) sessions.push(value);
   }
   return sessions.sort((a, b) => b.startedAt.localeCompare(a.startedAt));
 }
@@ -77,7 +82,7 @@ export function writeEvidence(session: LessonEvidence, expected?: LessonEvidence
 
 export const hasSolutionHelp = (hints: HintLevel[]) => hints.some((level) => level === 'H3' || level === 'H4');
 
-export function learningState(session: LessonEvidence, modify: string, make: string, transfer: string, build?: string) {
+export function learningState(session: LessonEvidence, modify: string, make: string, transfer: string, build?: string, freshTransferOnly = false) {
   const prediction = session.prediction?.runs.find((run) => run.status === 'completed');
   const investigated = !!prediction && (Number(prediction.stdout.trim()) === Number(session.prediction?.answer) ||
     session.followUps.some(({ correct }) => correct));
@@ -86,8 +91,8 @@ export function learningState(session: LessonEvidence, modify: string, make: str
   const built = !build || (!!session.buildPlan?.correct && !!buildPass);
   const made = session.submissions.filter((item) =>
     [make, transfer].includes(item.exercise.id) && item.grade?.verdict === 'passed');
-  const independent = made.find((item) => item.hints.length === 0 && !item.priorPass);
-  const qualifying = independent ?? made.find((item) => !hasSolutionHelp(item.hints));
+  const independent = made.find((item) => item.hints.length === 0 && !item.priorPass && !item.seenBefore);
+  const qualifying = independent ?? made.find((item) => !hasSolutionHelp(item.hints) && (!freshTransferOnly || item.exercise.id === make));
   return { prediction, investigated, modified, built, buildPass, made, independent, qualifying,
     activitiesComplete: !!(session.learnedAt && investigated && modified && built && made.length),
     canFinish: !!(session.learnedAt && investigated && modified && built && qualifying) };

@@ -80,7 +80,7 @@ try {
   assert(await make.locator('strong.teaching-variable').count());
   assert.match(await make.getByRole('textbox').innerText(), /^# /);
   await button('Save for later').press('Enter');
-  await page.getByRole('link', { name: /Open pilot lesson/ }).press('Enter');
+  await page.getByRole('link', { name: /Open F01.01/ }).press('Enter');
   await make.getByRole('textbox').fill('def receipt(tickets, price):\n    return tickets * (price + 4)');
   await button('Check solution', make).press('Enter');
   await make.getByText(/Some public cases failed/).waitFor();

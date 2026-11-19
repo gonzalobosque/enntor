@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { buildPlan, predictionCoaching } from '../courses/f01-01';
-import { loadPilot } from '../courses/load-pilot';
+import type { LoadedLesson } from '../courses/load-course-pack';
 import type { Exercise, HintLevel } from '../courses/contracts';
 import { runExercise } from '../execution/grading';
 import { pythonEngine } from '../execution/python-engine';
@@ -11,21 +10,21 @@ import { finalizeEvidence, hasSolutionHelp, learningState, now, withSweatRating 
 import type { Submission } from './evidence';
 import { useEvidence } from './useEvidence';
 import { LessonReport } from './LessonReport';
-import { pilotResultsPath } from '../app/areas';
-
-const { pack, lesson, prediction, modification, build, make, transfer } = loadPilot();
-export const pilotTitle = lesson.title;
-const lessonRef = { id: lesson.id, version: lesson.version };
+import { lessonPath } from '../app/areas';
 const stages = ['Learn', 'Predict', 'Investigate', 'Modify', 'Build', 'Make', 'Finish'];
 
-export function PilotLesson({ results }: { results: boolean }) {
-  const evidence = useEvidence(pack, lessonRef);
-  return <LessonSession key={evidence.session.id} evidence={evidence} results={results} />;
+export function ClimbLesson({ item, results }: { item: LoadedLesson; results: boolean }) {
+  const { pack, lesson, sequence } = item;
+  const evidence = useEvidence(pack, { id: lesson.id, version: lesson.version }, !!sequence.legacy);
+  return <LessonSession key={evidence.session.id} evidence={evidence} item={item} results={results} />;
 }
 
-function LessonSession({ evidence, results }: { evidence: ReturnType<typeof useEvidence>; results: boolean }) {
+function LessonSession({ evidence, item, results }: { evidence: ReturnType<typeof useEvidence>; item: LoadedLesson; results: boolean }) {
+  const { lesson, sequence, prediction, modification, build, make, transfer } = item;
+  const { buildPlan, predictionCoaching, legacy } = sequence;
+  const resultsPath = lessonPath(lesson.id, true);
   const { session, history, update, save, error, startAgain } = evidence;
-  const state = learningState(session, modification.id, make.id, transfer.id, build.id);
+  const state = learningState(session, modification.id, make.id, transfer.id, build.id, !legacy);
   const [answer, setAnswer] = useState(session.prediction?.answer ?? '');
   const showTransfer = !!session.transferOpenedAt;
   const [predicting, setPredicting] = useState(false);
@@ -64,8 +63,8 @@ function LessonSession({ evidence, results }: { evidence: ReturnType<typeof useE
     try {
       const result = await runExercise(pythonEngine, prediction, prediction.starterCode!, job.signal);
       update((old) => ({ ...old, prediction: { ...old.prediction!, runs: [...old.prediction!.runs, result],
-        hypothesis: result.status === 'completed' && Number(answerText) === predictionCoaching.alternativeAnswer &&
-          Number(result.stdout.trim()) !== Number(answerText) ? 'addition-first' : undefined } }));
+        hypothesis: result.status === 'completed' && Number(answerText) === predictionCoaching.hypothesis?.answer &&
+          Number(result.stdout.trim()) !== Number(answerText) ? predictionCoaching.hypothesis?.id : undefined } }));
     } finally {
       active.current = null;
       setPredicting(false);
@@ -79,16 +78,18 @@ function LessonSession({ evidence, results }: { evidence: ReturnType<typeof useE
   }
 
   function editor(exercise: Exercise, stage: 'Modify' | 'Build' | 'Make') {
-    // Modify's starter and draft format did not change when its hints were revised.
-    const draftVersion = exercise.id === modification.id ? '1.0.0' : exercise.version;
+    const legacyDraft = legacy?.draftExerciseId === exercise.id;
+    const draftVersion = legacyDraft ? legacy.draftVersion : exercise.version;
     const base = `enntor.draft.${exercise.id}.${draftVersion}`;
-    const key = session.legacyDrafts && exercise.id === modification.id ? base : `${base}.${session.id}`;
+    const key = session.legacyDrafts && legacyDraft ? base : `${base}.${session.id}`;
     const visibleHints = session.hints.filter((hint) => hint.exercise.id === exercise.id && hint.exercise.version === exercise.version).map(({ level }) => level);
     const previous = history.filter(({ id }) => id !== session.id);
     const priorHints = previous.flatMap((item) => item.hints).filter((hint) => hint.exercise.id === exercise.id)
       .map(({ level }) => level);
     const priorPass = previous.some((item) => item.submissions.some((attempt) =>
       attempt.exercise.id === exercise.id && attempt.grade?.verdict === 'passed'));
+    const seenBefore = !legacy && previous.some((item) => item.submissions.some((attempt) =>
+      attempt.exercise.id === exercise.id && attempt.exercise.version === exercise.version));
     return <ExerciseEditor key={exercise.id} {...{ stage, exercise, draftKey: key, priorPass }}
       hints={visibleHints} feedback={stage === 'Modify' ? predictionCoaching.modifyFeedback : undefined}
       onBusy={(value) => setBusy((old) => ({ ...old, [exercise.id]: value }))}
@@ -96,14 +97,14 @@ function LessonSession({ evidence, results }: { evidence: ReturnType<typeof useE
       onHint={(level: HintLevel) => update((old) => ({ ...old, hints: old.hints.some((hint) => hint.exercise.id === exercise.id &&
           hint.exercise.version === exercise.version && hint.level === level) ? old.hints : [...old.hints,
         { exercise: { id: exercise.id, version: exercise.version }, level, at: now() }] }))}
-      onAttempt={(attempt) => record({ ...attempt, hints: [...new Set([...priorHints, ...attempt.hints])] })} />;
+      onAttempt={(attempt) => record({ ...attempt, seenBefore: seenBefore || undefined, hints: [...new Set([...priorHints, ...attempt.hints])] })} />;
   }
 
   const stage = session.completion ? 7 : state.canFinish ? 6 : state.built ? 5 : state.modified ? 4 : state.investigated ? 3
     : state.prediction ? 2 : session.learnedAt ? 1 : 0;
   const output = state.prediction?.stdout.trim();
   const lastRun = session.prediction?.runs.at(-1);
-  const assistance = state.made.some((item) => item.hints.length > 0 || item.priorPass);
+  const assistance = state.made.some((item) => item.hints.length > 0 || item.priorPass || item.seenBefore);
 
   const blocked = predicting || !!busyCount || draftFailed;
   const storageAlert = error && <div className="pilot-feedback" role="alert">
@@ -112,7 +113,7 @@ function LessonSession({ evidence, results }: { evidence: ReturnType<typeof useE
   </div>;
 
   if (results) {
-    return <LessonReport title={lesson.title} session={session} storageAlert={storageAlert}
+    return <LessonReport item={item} session={session} storageAlert={storageAlert}
       onSweat={(sweat) => save(withSweatRating(session, sweat), true)} />;
   }
 
@@ -121,8 +122,9 @@ function LessonSession({ evidence, results }: { evidence: ReturnType<typeof useE
       <a className="back-link" href="#/climb" onClick={(event) => {
         if (error || draftFailed || predicting || busyCount) event.preventDefault();
       }}>← The Climb</a>
-      <p className="eyebrow">Pilot lesson · {lesson.id} · {lesson.estimatedMinutes} min</p>
-      <h1>Expressions and <span>evaluation order</span></h1>
+      <p className="eyebrow">{legacy ? 'Pilot lesson' : 'Lesson'} · {lesson.id} · {lesson.estimatedMinutes} min</p>
+      <h1>{sequence.titleAccent && lesson.title.endsWith(sequence.titleAccent)
+        ? <>{lesson.title.slice(0, -sequence.titleAccent.length)}<span>{sequence.titleAccent}</span></> : lesson.title}</h1>
       <ol className="pilot-journey" aria-label="Lesson journey">
         {stages.map((label, index) => {
           const historicalBuild = label === 'Build' && session.completion && !session.completion.buildId;
@@ -136,10 +138,10 @@ function LessonSession({ evidence, results }: { evidence: ReturnType<typeof useE
       {!error && !draftFailed && !session.completion && history.some(({ id }) => id === session.id) &&
         <p className="muted">Progress saved on this browser.</p>}
       {storageAlert}
-      {session.completion && <p className="pilot-success">Lesson completed and saved. <a className="pilot-inline-link" href={`#/${pilotResultsPath}`}>View learning report</a></p>}
+      {session.completion && <p className="pilot-success">Lesson completed and saved. <a className="pilot-inline-link" href={`#/${resultsPath}`}>View learning report</a></p>}
       <section className="pilot-section" aria-labelledby="learn-heading">
         <h2 id="learn-heading" className="pilot-stage-heading">Learn</h2>
-        <h3 className="pilot-exercise-heading">Trace backwards, execute forwards</h3>
+        <h3 className="pilot-exercise-heading">{sequence.learnTitle}</h3>
         {lesson.teachingBlocks.filter(({ type }) => type !== 'warning').map((block) => <TeachingText key={block.id} block={block} />)}
         {!session.learnedAt && !session.completion && <div className="pilot-controls">
           <button className="pilot-primary" onClick={() => update((old) => ({ ...old, learnedAt: now() }))}>Continue to Predict</button>
@@ -163,7 +165,7 @@ function LessonSession({ evidence, results }: { evidence: ReturnType<typeof useE
           </form>
           {lastRun && <Console runs={[lastRun]} printedLabel="Printed result" />}
         </section>}
-        {output !== undefined && session.prediction && <PredictionReview answer={session.prediction.answer} output={output}
+        {output !== undefined && session.prediction && <PredictionReview answer={session.prediction.answer} output={output} coaching={predictionCoaching}
           warning={lesson.teachingBlocks.find(({ type }) => type === 'warning')}
           reasoning={session.prediction.reasoning}
           onReasoning={(reasoning) => update((old) => ({ ...old, prediction: { ...old.prediction!, reasoning } }))}
@@ -187,7 +189,7 @@ function LessonSession({ evidence, results }: { evidence: ReturnType<typeof useE
             </label>)}
           </fieldset>
           {session.buildPlan && <p role="status">{session.buildPlan.correct ? 'That matches the requirement.'
-            : 'Try again. The reservation applies to the whole venue once.'}</p>}
+            : buildPlan.retry}</p>}
           {session.buildPlan?.correct && <p><TeachingProseText content={buildPlan.syntax} /></p>}
         </section>}
         {state.modified && session.buildPlan?.correct && editor(build, 'Build')}
@@ -195,7 +197,12 @@ function LessonSession({ evidence, results }: { evidence: ReturnType<typeof useE
         {state.built && assistance && !state.independent && !showTransfer && <div className="pilot-controls">
           <button disabled={!!busyCount} onClick={() => update((old) => ({ ...old, transferOpenedAt: now() }))}>Try a fresh Make problem</button>
         </div>}
-        {state.built && showTransfer && editor(transfer, 'Make')}
+        {state.built && showTransfer && <>
+          {!legacy && history.some((item) => item.id !== session.id &&
+            item.submissions.some((attempt) => attempt.exercise.id === transfer.id && attempt.exercise.version === transfer.version)) &&
+            <p className="pilot-feedback">You have already attempted this transfer problem. A repeat is practice. This edition has no second transfer variant.</p>}
+          {editor(transfer, 'Make')}
+        </>}
       </>}
       <section className="pilot-section" aria-labelledby="finish-heading">
         <h2 id="finish-heading">Finish</h2>
@@ -208,7 +215,7 @@ function LessonSession({ evidence, results }: { evidence: ReturnType<typeof useE
               : 'Complete the prediction review and pass Modify, Build, and Make to finish.'}</p>}
             <div className="pilot-controls">
               {state.canFinish ? <button className="pilot-primary" disabled={blocked} onClick={() => {
-                if (update((old) => finalizeEvidence(old, state), true)) window.location.hash = '/' + pilotResultsPath;
+                if (update((old) => finalizeEvidence(old, state), true)) window.location.hash = '/' + resultsPath;
               }}>Finish lesson</button> : <button disabled={blocked} onClick={() => {
                 if (save()) window.location.hash = '/climb';
               }}>Save for later</button>}

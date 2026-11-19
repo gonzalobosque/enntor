@@ -1,40 +1,40 @@
 import type { TeachingBlock } from '../courses/contracts';
 import { TeachingText, TeachingProseText } from './TeachingText';
 import { useState } from 'react';
-import { predictionCoaching } from '../courses/f01-01';
+import type { LessonSequence } from '../courses/load-course-pack';
 
-export function PredictionReview({ answer, output, warning, reasoning, onReasoning, followUpResult, onFollowUp }: {
-  answer: string; output: string; warning?: TeachingBlock;
+export function PredictionReview({ answer, output, warning, coaching, reasoning, onReasoning, followUpResult, onFollowUp }: {
+  answer: string; output: string; warning?: TeachingBlock; coaching: LessonSequence['predictionCoaching'];
   reasoning?: 'confirmed' | 'rejected'; onReasoning: (value: 'confirmed' | 'rejected') => void;
   followUpResult?: { answer: string; correct: boolean }; onFollowUp: (answer: string, correct: boolean) => void;
 }) {
   const matched = Number(answer) === Number(output);
-  const suggested = !matched && Number(answer) === predictionCoaching.alternativeAnswer;
+  const hypothesis = !matched && Number(answer) === coaching.hypothesis?.answer ? coaching.hypothesis : undefined;
   const [followUp, setFollowUp] = useState(followUpResult?.answer ?? '');
   const result = followUpResult?.correct ? 'correct'
     : followUpResult?.answer === followUp.trim() ? 'retry' : undefined;
-  const check = predictionCoaching.followUp;
+  const check = coaching.followUp;
 
   return (
     <section className="pilot-section" aria-labelledby="investigate-heading">
       <h2 id="investigate-heading" className="pilot-stage-heading">Investigate</h2>
       <p className={matched ? 'pilot-success' : undefined}>{matched ? <><strong>That's right!</strong> Python printed <code>{output}</code>, matching your prediction.</> : `You predicted ${answer}. Python printed ${output}.`}</p>
-      {suggested ? (
+      {hypothesis ? (
         <>
-          <p><TeachingProseText content={predictionCoaching.possibleReasoning} /></p>
-          <p><TeachingProseText content={predictionCoaching.actualReasoning} /></p>
+          <p><TeachingProseText content={hypothesis.possibleReasoning} /></p>
+          <p><TeachingProseText content={hypothesis.actualReasoning} /></p>
           <fieldset>
-            <legend>Is that how you got 30?</legend>
+            <legend>{hypothesis.question}</legend>
             <label><input type="radio" name="reasoning" checked={reasoning === 'confirmed'}
-              onChange={() => onReasoning('confirmed')} /> Yes, I added first</label>
+              onChange={() => onReasoning('confirmed')} /> {hypothesis.confirm}</label>
             <label><input type="radio" name="reasoning" checked={reasoning === 'rejected'}
               onChange={() => onReasoning('rejected')} /> No, I used a different approach</label>
           </fieldset>
           {reasoning && <p role="status">{reasoning === 'confirmed'
-            ? 'Thanks for confirming. Try tracing multiplication first in the next example.'
-            : 'Thanks for clarifying. Start with the assignments and trace each dependency in the next example.'}</p>}
+            ? hypothesis.confirmedFeedback
+            : hypothesis.rejectedFeedback}</p>}
         </>
-      ) : <p><TeachingProseText content={predictionCoaching.explanation} /></p>}
+      ) : <p><TeachingProseText content={coaching.explanation} /></p>}
       {warning && <TeachingText block={warning} />}
       {!matched && (
         <div className="pilot-feedback">

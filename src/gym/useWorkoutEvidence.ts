@@ -13,7 +13,7 @@ function load() {
     unreadable = true;
   }
   try {
-    const sessions = readEvidence({ id: 'F01.01', version: '' });
+    const sessions = readEvidence({ id: 'F01.01', version: '' }, 'python-ai-pilot');
     const observations = f01Observations(sessions, records);
     const rating = sessions.find(({ completion }) => completion && completion.sweat !== null)?.completion?.sweat;
     return { records, observations, rating, unreadable };

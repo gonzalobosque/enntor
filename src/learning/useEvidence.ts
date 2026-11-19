@@ -9,17 +9,17 @@ function newEvidence(pack: ContentReference, lesson: ContentReference, legacyDra
     startedAt: at, updatedAt: at, followUps: [], hints: [], submissions: [] };
 }
 
-export function useEvidence(pack: ContentReference, lesson: ContentReference) {
+export function useEvidence(pack: ContentReference, lesson: ContentReference, legacyDrafts: boolean) {
   const [initial] = useState(() => {
     try {
-      const history = readEvidence(lesson);
-      const current = history[0];
+      const history = readEvidence(lesson, pack.id);
+      const current = history.find((item) => item.lesson.version === lesson.version || item.completion);
       return { history, current, error: false };
     } catch {
       return { history: [], current: undefined, error: true };
     }
   });
-  const [session, setSession] = useState(() => initial.current ?? newEvidence(pack, lesson, !initial.history.length));
+  const [session, setSession] = useState(() => initial.current ?? newEvidence(pack, lesson, legacyDrafts && !initial.history.length));
   const current = useRef(session);
   const persisted = useRef(initial.current);
   const [history, setHistory] = useState(initial.history);
