@@ -14,7 +14,7 @@ A passing Make result without hints or a prior pass on that exercise demonstrate
 
 ### Teaching prose and local evidence
 
-Author teaching prose with ordinary strings and explicit inline spans tagged as function, variable, or code. The shared renderer applies the existing theme styles to Learn, Investigate, instructions, and hints.
+Author teaching prose with ordinary strings and explicit inline spans tagged as function, variable, keyword, or code. The shared renderer applies the existing theme styles to Learn, Investigate, instructions, and hints.
 
 Drafts and versioned session evidence are saved to browser localStorage on the current origin. Save for later keeps unfinished work available from The Climb. The saved report uses `#/climb/F01.01/results`. Learning history shows prior submissions, and reopening a completed lesson displays the saved result. The pilot records checking time rather than time spent studying. Storage limits and browser data clearing apply. Use one editing tab per session. Learner evidence stays in the browser.
 
@@ -82,6 +82,16 @@ Read both authoritative sources before changing product behavior or course desig
 The curriculum specifies **22 modules and 135 lessons**, including placement. It combines explicit mental models, worked examples, Predict → Run → Investigate → Modify → Make, independent transfer, and spaced retrieval. These are blueprints, not completed executable course content. Preserve the original specifications and record amendments separately.
 
 Reasoning-aware feedback is a fundamental goal. It should analyze an implementation using concrete evidence, distinguish plausible misconceptions from facts, and teach a better approach. Fresh independent coding remains central to mastery.
+
+## Quality standards and review
+
+Apply the latest explicitly approved amendments first when sources conflict. The master spec governs the intended experience and the curriculum governs course objectives and dependencies. Implementation and tests document current coverage. See [AGENTS.md](AGENTS.md) for the reading order.
+
+- [Learning standards](docs/quality/LEARNING_STANDARDS.md) and [authoring checklist](docs/teaching-guidelines.md)
+- [UX and coach voice](docs/quality/UX_STANDARDS.md)
+- [Release gates and synthetic evidence](docs/quality/RELEASE_GATES.md)
+- [Source reconciliation and traceability](docs/quality/REQUIREMENT_TRACEABILITY.md)
+- [Open decisions and deferred capabilities](docs/quality/OPEN_DECISIONS.md)
 
 ## Milestone roadmap
 

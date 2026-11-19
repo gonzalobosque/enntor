@@ -1,0 +1,7 @@
+# Working on ENNTOR
+
+1. Start with [accepted amendments](docs/architecture/DECISIONS.md), the [product specification v1.0](docs/Enhtor_Product_Experience_Behavior_Master_Spec_v1.0.md) and [curriculum v1.1](docs/Python_AI_Interview_Learning_Curriculum_v1.1.md). Apply newer explicit amendments to conflicts. Preserve the historical sources, stable IDs and evidence.
+2. Read [Learning](docs/quality/LEARNING_STANDARDS.md), [UX and coach voice](docs/quality/UX_STANDARDS.md) and [Release gates](docs/quality/RELEASE_GATES.md) before changing learner-facing behavior. Use the [source ledger](docs/quality/REQUIREMENT_TRACEABILITY.md) and [open decisions](docs/quality/OPEN_DECISIONS.md) to distinguish policy, proposals and implemented scope.
+3. Keep changes scoped. Validate versioned content, run starters/references/known mistakes, protect autosave and cancellation, use approved theme tokens, and make claims proportional to tested evidence. AI cannot change official content or determine executable correctness.
+4. Keep learner evidence, private material and secrets out of commits, PR media and logs. No unauthorized provider requests or billable AI. Use only synthetic review data.
+5. Run typecheck, tests, build and relevant negative/browser checks. Report what was tested, review outgoing history, and open a scoped PR when authorized. Obtain independent review and explicit approval before release or merge.
