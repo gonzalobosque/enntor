@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { useTheme } from '../platform/useTheme';
 import { Climb } from './Climb';
-import { course } from '../courses/course';
+import { course, coursePack } from '../courses/course';
 import { areas, gymResultsPath, gymWorkoutPath, parseLessonPath, readRoute } from './areas';
 import type { AreaId } from './areas';
 
@@ -45,7 +45,7 @@ function Home() {
       </section>
       <aside className="course-note" aria-label="First course pack">
         <div className="course-label"><span className="course-dot" /> First course pack</div>
-        <div><h2>Python &amp; AI interview skills</h2><p>From knowing how it works to writing it yourself.</p></div>
+        <div><h2>{coursePack.title}</h2><p>From knowing how it works to writing it yourself.</p></div>
         <span className="course-status">{course.length} {course.length === 1 ? 'lesson' : 'lessons'} available</span>
       </aside>
     </>

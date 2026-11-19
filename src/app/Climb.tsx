@@ -27,7 +27,7 @@ export function Climb({ route }: { route?: { id: string; results: boolean } }) {
     {error && <p role="alert">Saved lesson progress could not be read. Locked lessons will open when their prerequisites can be verified.</p>}
     {route && !item && <p role="status">This lesson is unavailable in the current course pack.</p>}
     {item && !!blocked?.length && <p role="status">{item.lesson.id} opens after {blocked.join(', ')}.</p>}
-    <p>Start with expressions, then follow how Python names and objects change.</p>
+    <p>{coursePack.description}</p>
     {coursePack.modules.map((module) => <section className="pilot-section" key={module.id} aria-labelledby={`module-${module.id}`}>
       <h2 id={`module-${module.id}`} className="pilot-stage-heading">{module.id} · {module.title}</h2>
       <ol className="climb-lessons">{course.filter((entry) => entry.module.id === module.id).map((entry) => {

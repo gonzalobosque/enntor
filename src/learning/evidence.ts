@@ -17,6 +17,7 @@ export interface Submission {
   hints: HintLevel[];
   priorPass: boolean;
   seenBefore?: boolean;
+  priorSolutionHelp?: boolean;
   startedAt: string;
   finishedAt?: string;
   elapsedMs?: number;
@@ -91,8 +92,8 @@ export function learningState(session: LessonEvidence, modify: string, make: str
   const built = !build || (!!session.buildPlan?.correct && !!buildPass);
   const made = session.submissions.filter((item) =>
     [make, transfer].includes(item.exercise.id) && item.grade?.verdict === 'passed');
-  const independent = made.find((item) => item.hints.length === 0 && !item.priorPass && !item.seenBefore);
-  const qualifying = independent ?? made.find((item) => !hasSolutionHelp(item.hints) && (!freshTransferOnly || item.exercise.id === make));
+  const independent = made.find((item) => item.hints.length === 0 && !item.priorPass && !item.seenBefore && !item.priorSolutionHelp);
+  const qualifying = independent ?? made.find((item) => !hasSolutionHelp(item.hints) && !item.priorSolutionHelp && (!freshTransferOnly || item.exercise.id === make));
   return { prediction, investigated, modified, built, buildPass, made, independent, qualifying,
     activitiesComplete: !!(session.learnedAt && investigated && modified && built && made.length),
     canFinish: !!(session.learnedAt && investigated && modified && built && qualifying) };

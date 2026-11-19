@@ -4,8 +4,8 @@ import { lessonPath } from '../app/areas';
 import { hasSolutionHelp, sweatChoices } from './evidence';
 import type { LessonEvidence, Sweat } from './evidence';
 
-export function LessonReport({ item, session, storageAlert, onSweat }: {
-  item: LoadedLesson; session: LessonEvidence; storageAlert: ReactNode; onSweat: (sweat: Sweat) => void;
+export function LessonReport({ item, session, reports, onReport, storageAlert, onSweat }: {
+  item: LoadedLesson; session: LessonEvidence; reports: LessonEvidence[]; onReport: (id: string) => void; storageAlert: ReactNode; onSweat: (sweat: Sweat) => void;
 }) {
   const { lesson, transfer, sequence } = item;
   const completion = session.completion;
@@ -15,11 +15,18 @@ export function LessonReport({ item, session, storageAlert, onSweat }: {
   const failed = session.submissions.filter(({ grade }) => grade?.verdict === 'failed');
   const buildMistakes = session.buildChecks?.filter(({ correct }) => !correct) ?? [];
   const followUpFailures = session.followUps.filter(({ correct }) => !correct);
-  const hypothesis = sequence.predictionCoaching.hypothesis;
+  const currentNarrative = sequence.legacy || session.lesson.version === lesson.version;
+  const hypothesis = currentNarrative ? sequence.predictionCoaching.hypothesis : undefined;
   const reasoning = prediction?.hypothesis === hypothesis?.id ? hypothesis?.report[prediction?.reasoning ?? 'unconfirmed'] : undefined;
   return <article className="pilot">
     <p className="eyebrow">{session.lesson.id} · Learning report</p>
     <h1>{lesson.title}</h1>
+    <p className="muted">Lesson edition {session.lesson.version}</p>
+    {reports.length > 1 && <label>Saved report <select value={session.id} onChange={(event) => onReport(event.target.value)}>
+      {reports.map((report) => <option key={report.id} value={report.id}>
+        {new Date(report.completion!.at).toLocaleString()} · edition {report.lesson.version}
+      </option>)}
+    </select></label>}
     {storageAlert}
     {completion ? <>
       <section className="pilot-section" aria-labelledby="outcomes-heading">
@@ -33,7 +40,7 @@ export function LessonReport({ item, session, storageAlert, onSweat }: {
           <li>{make?.exercise.id === transfer.id ? 'Fresh Make problem passed.' : 'Make passed.'}</li>
         </ul>
         <p><strong>{completion.independent ? 'Independent skill demonstrated on this problem.'
-          : make?.hints.length ? 'Make passed with help.' : 'Make passed on a previously solved problem.'}</strong></p>
+          : make?.hints.length ? 'Make passed with help.' : 'Make passed on a previously seen problem.'}</strong></p>
         {make?.hints.length ? <p>Recorded help: {make.hints.join(', ')}. {hasSolutionHelp(make.hints) ? 'Includes implementation help.' : 'Conceptual help.'}</p> : null}
       </section>
       {(prediction?.hypothesis || failed.length > 0 || followUpFailures.length > 0 || buildMistakes.length > 0 ||
@@ -42,7 +49,7 @@ export function LessonReport({ item, session, storageAlert, onSweat }: {
           <h2 id="mistakes-heading">What the work showed</h2>
           {actual !== undefined && Number(prediction?.answer) !== Number(actual) && <p>The initial prediction differed from the output.</p>}
           {reasoning && <p>{reasoning}</p>}
-          {!!buildMistakes.length && <p>{sequence.buildPlan.report} Incorrect choices: {buildMistakes.length}.</p>}
+          {!!buildMistakes.length && <p>{currentNarrative && sequence.buildPlan.report} Incorrect Build choices: {buildMistakes.length}.</p>}
           {followUpFailures.map(({ id, answer, expected }) => <p key={id}>Follow-up answer <code>{answer}</code>. Expected <code>{expected}</code>.</p>)}
           {failed.map((attempt) => <details key={attempt.id}>
             <summary>{attempt.exercise.id} · failed public checks</summary>

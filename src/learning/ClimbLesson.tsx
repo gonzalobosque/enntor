@@ -6,7 +6,7 @@ import { pythonEngine } from '../execution/python-engine';
 import { TeachingText, TeachingProseText } from './TeachingText';
 import { PredictionReview } from './PredictionReview';
 import { Console, ExerciseEditor } from './ExerciseEditor';
-import { finalizeEvidence, hasSolutionHelp, learningState, now, withSweatRating } from './evidence';
+import { finalizeEvidence, hasSolutionHelp, learningState, now } from './evidence';
 import type { Submission } from './evidence';
 import { useEvidence } from './useEvidence';
 import { LessonReport } from './LessonReport';
@@ -16,10 +16,20 @@ const stages = ['Learn', 'Predict', 'Investigate', 'Modify', 'Build', 'Make', 'F
 export function ClimbLesson({ item, results }: { item: LoadedLesson; results: boolean }) {
   const { pack, lesson, sequence } = item;
   const evidence = useEvidence(pack, { id: lesson.id, version: lesson.version }, !!sequence.legacy);
-  return <LessonSession key={evidence.session.id} evidence={evidence} item={item} results={results} />;
+  return results ? <SavedLessonReport evidence={evidence} item={item} />
+    : <LessonSession key={evidence.session.id} evidence={evidence} item={item} />;
 }
 
-function LessonSession({ evidence, item, results }: { evidence: ReturnType<typeof useEvidence>; item: LoadedLesson; results: boolean }) {
+function SavedLessonReport({ evidence, item }: { evidence: ReturnType<typeof useEvidence>; item: LoadedLesson }) {
+  const [reportId, setReportId] = useState('');
+  const reports = evidence.history.filter(({ completion }) => completion);
+  const saved = reports.find(({ id }) => id === reportId) ?? reports[0] ?? evidence.session;
+  return <LessonReport item={item} session={saved} reports={reports} onReport={setReportId}
+    storageAlert={evidence.error && <p role="alert">Local evidence could not be saved or read. Reload the last saved report before trying again.</p>}
+    onSweat={(sweat) => evidence.rate(saved, sweat)} />;
+}
+
+function LessonSession({ evidence, item }: { evidence: ReturnType<typeof useEvidence>; item: LoadedLesson }) {
   const { lesson, sequence, prediction, modification, build, make, transfer } = item;
   const { buildPlan, predictionCoaching, legacy } = sequence;
   const resultsPath = lessonPath(lesson.id, true);
@@ -84,12 +94,13 @@ function LessonSession({ evidence, item, results }: { evidence: ReturnType<typeo
     const key = session.legacyDrafts && legacyDraft ? base : `${base}.${session.id}`;
     const visibleHints = session.hints.filter((hint) => hint.exercise.id === exercise.id && hint.exercise.version === exercise.version).map(({ level }) => level);
     const previous = history.filter(({ id }) => id !== session.id);
-    const priorHints = previous.flatMap((item) => item.hints).filter((hint) => hint.exercise.id === exercise.id)
+    const priorHints = previous.flatMap((item) => item.hints).filter((hint) => hint.exercise.id === exercise.id &&
+      (legacy || hint.exercise.version === exercise.version))
       .map(({ level }) => level);
     const priorPass = previous.some((item) => item.submissions.some((attempt) =>
-      attempt.exercise.id === exercise.id && attempt.grade?.verdict === 'passed'));
-    const seenBefore = !legacy && previous.some((item) => item.submissions.some((attempt) =>
-      attempt.exercise.id === exercise.id && attempt.exercise.version === exercise.version));
+      attempt.exercise.id === exercise.id && (legacy || attempt.exercise.version === exercise.version) && attempt.grade?.verdict === 'passed'));
+    const seenBefore = !legacy && (priorHints.length > 0 || previous.some((item) => item.submissions.some((attempt) =>
+      attempt.exercise.id === exercise.id && attempt.exercise.version === exercise.version)));
     return <ExerciseEditor key={exercise.id} {...{ stage, exercise, draftKey: key, priorPass }}
       hints={visibleHints} feedback={stage === 'Modify' ? predictionCoaching.modifyFeedback : undefined}
       onBusy={(value) => setBusy((old) => ({ ...old, [exercise.id]: value }))}
@@ -97,25 +108,21 @@ function LessonSession({ evidence, item, results }: { evidence: ReturnType<typeo
       onHint={(level: HintLevel) => update((old) => ({ ...old, hints: old.hints.some((hint) => hint.exercise.id === exercise.id &&
           hint.exercise.version === exercise.version && hint.level === level) ? old.hints : [...old.hints,
         { exercise: { id: exercise.id, version: exercise.version }, level, at: now() }] }))}
-      onAttempt={(attempt) => record({ ...attempt, seenBefore: seenBefore || undefined, hints: [...new Set([...priorHints, ...attempt.hints])] })} />;
+      onAttempt={(attempt) => record({ ...attempt, seenBefore: seenBefore || undefined, priorSolutionHelp: !legacy && hasSolutionHelp(priorHints) || undefined,
+        hints: legacy ? [...new Set([...priorHints, ...attempt.hints])] : attempt.hints })} />;
   }
 
   const stage = session.completion ? 7 : state.canFinish ? 6 : state.built ? 5 : state.modified ? 4 : state.investigated ? 3
     : state.prediction ? 2 : session.learnedAt ? 1 : 0;
   const output = state.prediction?.stdout.trim();
   const lastRun = session.prediction?.runs.at(-1);
-  const assistance = state.made.some((item) => item.hints.length > 0 || item.priorPass || item.seenBefore);
+  const assistance = state.made.some((item) => item.hints.length > 0 || item.priorPass || item.seenBefore || item.priorSolutionHelp);
 
   const blocked = predicting || !!busyCount || draftFailed;
   const storageAlert = error && <div className="pilot-feedback" role="alert">
     <p>Local evidence could not be saved or read. Keep this page open and retry. Another tab may have changed this session.</p>
-    {!results && <button onClick={() => save()}>Retry saving</button>}
+    <button onClick={() => save()}>Retry saving</button>
   </div>;
-
-  if (results) {
-    return <LessonReport item={item} session={session} storageAlert={storageAlert}
-      onSweat={(sweat) => save(withSweatRating(session, sweat), true)} />;
-  }
 
   return (
     <article className="pilot">

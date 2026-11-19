@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import type { ContentReference } from '../courses/contracts';
-import { now, readEvidence, writeEvidence } from './evidence';
-import type { LessonEvidence } from './evidence';
+import { now, readEvidence, withSweatRating, writeEvidence } from './evidence';
+import type { LessonEvidence, Sweat } from './evidence';
 
 function newEvidence(pack: ContentReference, lesson: ContentReference, legacyDrafts: boolean): LessonEvidence {
   const at = now();
@@ -62,5 +62,21 @@ export function useEvidence(pack: ContentReference, lesson: ContentReference, le
     }
   }
 
-  return { session, history, error, update, save, startAgain };
+  function rate(target: LessonEvidence, sweat: Sweat) {
+    const rated = withSweatRating(target, sweat);
+    if (target === rated) return;
+    if (current.current.id === target.id) {
+      save(rated, true);
+      return;
+    }
+    try {
+      writeEvidence(rated, target);
+      setHistory((old) => old.map((item) => item.id === rated.id ? rated : item));
+      setError(false);
+    } catch {
+      setError(true);
+    }
+  }
+
+  return { session, history, error, update, save, startAgain, rate };
 }
