@@ -1,0 +1,21 @@
+# Open decisions and deferred capabilities
+
+The defaults here preserve accepted product requirements while implementation is unresolved. Update the [decision log](../architecture/DECISIONS.md) after a decision, and link supporting evidence and tests. These items do not authorize feature work.
+
+| Choice | Established boundary | Evidence needed before settling |
+| --- | --- | --- |
+| ChatGPT connection | Core goal. No additional billable requests, simulated AI or presumed subscription entitlement. Deterministic learning is available independently. | Current official terms and supported auth, actual eligibility with the intended account/deployment, usage caps and behavior when unavailable. Compare prototype feedback with reviewed teaching cases. |
+| Consent, retention and provider state | Data stays in the browser today. An app account and a model connection are separate. Even with broad permission, send only necessary context. | An inspectable consent/revoke flow, context preview, secure token handling and privacy/deletion tests. Decide how to handle unavailable authorization or possible future cost changes explicitly. |
+| Mentor naming and help treatment | ENNTOR is the product brand. Product v1.0 calls the mentor Enhtor. A separate rename or final Warm/Direct/Firm defaults are undecided. | Owner decision if the name changes. Compare how learners ask for clarification, correct a rejected explanation, or flag a bad test. Evaluate help UI when the context is established. |
+| Evidence storage and sync | Pilot localStorage is per browser origin. Historical attempts, drafts and version provenance must survive. No silent draft replacement. | Test representative older records before selecting a transactional store, rollback and export/import plan. Before accounts, define isolation, deletion, retention and conflict policy for Android and Mac. |
+| Bridges and placement | Strict main-path objectives with previous lessons revisitable. Never bypass independent production on quiz performance. The pilot does not implement placement. | Resolve which fresh evidence qualifies for placement under curriculum §3 without a general skip. Map significant changed objectives to bridges and stable identities. |
+| Difficulty and retention | Subjective Sweat is contextual. No unsupported ability score or recurring diagnosis. Pilot rules cover one concept. | Multi-context examples with subsequent independent corrections, inspectable adaptation, and calibration of cadence/thresholds. Decide how a learner overrides a poor recommendation. |
+| Room assistance and offline settings | Room preview only. Unaided assessment must preserve integrity. Full offline capability is deferred. | Test withheld vs explicitly assisted HELP, interruptions and timed debrief. Design offline pack/package budgets, version updates, graceful service loss and cache cleanup separate from deletion. |
+| Device and pattern research | Existing editorial identity and keyboard ergonomics are approved. Narrow browser emulation cannot prove physical device operation. | Inspect current credible interaction references only for concrete unresolved patterns. Record date, fit and adopt/adapt/reject reasoning. Prioritize real Android soft keyboard and Safari checks for release. |
+| Distribution and license | Public GitHub for review; no license chosen, no implied hosted release. | Owner approval for licensing, deployment and privacy policy. Identify allowed asset/source use and verify the deployed build and service boundaries. |
+
+## Authoring and review calibration
+
+The supported direction is a versioned authoring process with validation and independent review. The handoff's proposed starting batch of three to five consecutive lessons is a planning option. Choose the actual unit after checking dependencies and whether it exercises concept reuse, scaffold fading and grading. A content checker can flag missing prerequisites, unresolved symbols and near-duplicates for review. It cannot certify fairness or novelty.
+
+A 0–4 review rubric with a suggested minimum of 3 on each core dimension is an editorial proposal. Calibrate against examples and collect disagreement before adopting a hard threshold. Critical defects remain gate failures. Independence, retention and readiness describe learner evidence and must never use the review rubric as an ability score.

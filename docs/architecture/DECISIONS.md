@@ -4,6 +4,8 @@ Accepted amendments and reversible engineering choices · 18 November 2026
 
 The original Product Experience & Behavior Master Spec v1.0 and Curriculum v1.1 remain authoritative. The accepted amendments below supersede conflicting original delivery priorities. The curriculum defines 22 modules and 135 lessons, including placement. These are content specifications awaiting authoring and executable validation.
 
+For review and implementation guidance, see the [source reconciliation](../quality/REQUIREMENT_TRACEABILITY.md), [release gates](../quality/RELEASE_GATES.md) and [open decisions](../quality/OPEN_DECISIONS.md). The standards apply the accepted amendments; policy proposals require separate approval.
+
 ## Accepted product amendments
 
 1. **Reusable learning platform.** Separate the platform from subject content. Python/ML is the first Course Pack. Future packs may teach SQL or other skills.
