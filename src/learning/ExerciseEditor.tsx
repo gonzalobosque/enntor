@@ -46,7 +46,7 @@ export function Console({ runs, printedLabel = 'stdout' }: { runs: ExecutionResu
 }
 
 export function ExerciseEditor({ stage, exercise, draftKey, hints, priorPass, feedback, onHint, onAttempt, onBusy, onDraftFailure }: {
-  stage: 'Modify' | 'Build' | 'Make'; exercise: Exercise; draftKey: string; hints: HintLevel[];
+  stage: 'Modify' | 'Build' | 'Make' | 'Practice'; exercise: Exercise; draftKey: string; hints: HintLevel[];
   priorPass: boolean; feedback?: TeachingProse; onHint: (level: HintLevel) => void;
   onAttempt: (attempt: Submission) => void; onBusy: (value: boolean) => void; onDraftFailure: (value: boolean) => void;
 }) {
@@ -206,7 +206,7 @@ export function ExerciseEditor({ stage, exercise, draftKey, hints, priorPass, fe
                   </tr>;
                 })}</tbody>
               </table>
-              <p className="muted">These checks cover the listed cases. Lesson mastery requires independent practice.</p>
+              <p className="muted">{stage === 'Practice' ? 'These checks cover the listed cases.' : 'These checks cover the listed cases. Lesson mastery requires independent practice.'}</p>
             </div>
           )}
         </section>
