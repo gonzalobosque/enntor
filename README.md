@@ -2,9 +2,9 @@
 
 ENNTOR is a teaching-first learning platform for independent problem solving. Its first planned Course Pack focuses on Python and applied AI/ML interview skills. The educational goal is to write correct, explainable code from scratch, repair mistakes, and transfer understanding to unfamiliar problems.
 
-## Current release · Milestone 2D
+## Current release · Milestone 3C
 
-The Climb offers one pilot lesson, **F01.01 · Expressions and evaluation order**. Learn from a worked example, commit a prediction, investigate the real Python result, modify a function, plan and build a guided function, then write one from scratch. Finish saves completion and opens a separate learning report, where the optional Sweat check-in can be changed or skipped. The Gym and The Room remain previews.
+The Climb offers one pilot lesson, **F01.01 · Expressions and evaluation order**. Learn from a worked example, commit a prediction, investigate the real Python result, modify a function, plan and build a guided function, then write one from scratch. Finish saves completion and opens a separate learning report, where the optional Sweat check-in can be changed or skipped. The Gym offers one evaluation-order workout. The Room remains a preview.
 
 The CodeMirror Python editor uses syntax-aware indentation. Tab indents four spaces, Shift+Tab outdents, and Escape followed by Tab moves focus out. Use the standard undo and redo shortcuts for your platform.
 
@@ -17,6 +17,16 @@ A passing Make result without hints or a prior pass on that exercise demonstrate
 Author teaching prose with ordinary strings and explicit inline spans tagged as function, variable, keyword, or code. The shared renderer applies the existing theme styles to Learn, Investigate, instructions, and hints.
 
 Drafts and versioned session evidence are saved to browser localStorage on the current origin. Save for later keeps unfinished work available from The Climb. The saved report uses `#/climb/F01.01/results`. Learning history shows prior submissions, and reopening a completed lesson displays the saved result. The pilot records checking time rather than time spent studying. Storage limits and browser data clearing apply. Use one editing tab per session. Learner evidence stays in the browser.
+
+### The Gym
+
+The Gym reads saved F01.01 predictions, follow-ups, exercise checks, and help used. It recommends optional reinforcement when there is little evidence or only a single miss. Two distinct misses on the same activity without a later pass can prompt targeted practice. A later independent result tempers that recommendation. Learner-confirmed explanations apply only to the original attempt. Sweat ratings provide context and do not affect recommendations.
+
+From **The Gym**, start or resume a workout. The optional warm-up pairs a short refresher with a visitor-count Modify task before the warehouse-scale challenge. You can revisit it while practicing. Reset and Try again from scratch affect only the selected editor's draft.
+
+The Gym uses public Python checks to distinguish execution errors from wrong results. Its narrow structural rules can detect reversed subtraction or particular groupings when the test values corroborate them. Other results get a question about an actual failing case. Learners can request further hints and the full worked solution. An explicit full-solution reveal opens the postcard problem for that workout. Hints, nudges and transfer availability start fresh in each workout. Earlier exposure to the same exercise version is kept separately so an unaided repeat is described as practice rather than new independent evidence.
+
+**Save for later** returns to The Gym with the unfinished session and draft still available. After a check returns a verdict or a recognized Python exception, **Finish workout** saves the latest evaluated outcome and opens `#/gym/results`. The report separates attempts, assistance, observed issues, and the optional Sweat rating. It can show a failed workout accurately, and changing the rating updates the same completion. Earlier Gym records remain in local history. Use one editing tab per workout. If a newer browser record exists, a stale update is rejected and the saved version is shown. The localStorage check and write are separate operations, so this is not a guarantee against simultaneous edits or draft conflicts. All evidence stays in the current browser origin.
 
 ### Python runtime
 
@@ -120,6 +130,7 @@ npm install --no-save --package-lock=false playwright
 npx playwright install chromium
 ENNTOR_TEST_ORIGIN=http://127.0.0.1:5173 node scripts/check-pilot-editor.mjs
 ENNTOR_TEST_ORIGIN=http://127.0.0.1:5173 node scripts/check-pilot-results.mjs
+ENNTOR_TEST_ORIGIN=http://127.0.0.1:5173 node scripts/check-gym-browser.mjs
 ```
 
 For activity design and review, see [Progressive independence with controlled difficulty](docs/teaching-guidelines.md).

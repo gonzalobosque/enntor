@@ -103,3 +103,25 @@ The version 1 local evidence record gained optional Build fields. Earlier sessio
 ## E12 · Teaching consistency
 
 Teaching prose uses explicit semantic roles for functions, variables, keywords, and ordinary code. Exercise hints disclose one action at a time and retain revealed levels in the existing evidence record. [Progressive independence with controlled difficulty](../teaching-guidelines.md) defines the authoring and review standard.
+
+## E13 · Evidence-based Gym pilot
+
+An F01.01 adapter converts Climb sessions and Gym attempts into dated observations for one concept. The recommendation rules work on observation IDs, activity, result, and assistance. A pass clears earlier misses on the same activity for recommendation purposes. Two distinct misses without a later pass can prompt practice, unless a later independent result supports reinforcement. Incomplete execution supplies no correctness signal. A confirmed hypothesis describes that attempt only. Unconfirmed and rejected hypotheses do not support a diagnosis. Sweat is context only.
+
+Gym writes version 1 browser-local records under its own key prefix. A submission keeps its ID from start to finish and stores the exercise revision, concept, code, outcome, assistance, and recommendation reason and evidence IDs. Revealed hints persist for this workout across reloads. Failed writes remain retryable in memory and are excluded from recommendations until saved. Gym never writes Climb records. This heuristic covers one concept and one workout, with no mastery updates, schedule, analytics, or remote service.
+
+## E14 · Gym warm-up and deterministic coaching
+
+The Gym loads on navigation. Authored warm-up content is separate from the workout and the reusable warm-up component. The version 1 Gym store accepts a warm-up decision record. Existing attempt records remain readable.
+
+The diagnostic interface takes the exercise and completed submission evidence and returns a factual observation, an optional tentative explanation, and a conceptual question. The warehouse rule uses the existing Lezer Python parser to recognize a direct reversed-subtraction return. Two failed public cases must corroborate the pattern. Other wrong results receive a question about one actual case. Runtime errors retain their existing execution feedback. No diagnostic changes grading.
+
+The attempt can store the observation, hypothesis, displayed nudge, and learner response separately. Each nudge is shown at most once per workout version. Later checks reference earlier nudges and link any previously missed case that now passes. A recent assisted Gym pass is shown alongside repeated unresolved Climb misses. Targeted nudges and revealed hints count as assistance, and the general optional warm-up is recorded separately. All evidence remains browser-local.
+
+## E15 · Repeatable Gym workouts and results
+
+The existing version 1 Gym prefix now accepts session records and optional session and activity references on attempts. Older records remain readable. A session finalizes once with references to its attempts and the latest evaluated outcome. A Python exception can end an unsuccessful workout. Warm-up checks and cancelled checks do not qualify on their own. Sweat updates the completion in place. The first session keeps access to the prior draft key and later sessions start with separate drafts.
+
+Warm-up presentation is chosen by the upcoming learning activity, with evidence used to focus the authored refresher. The Make warm-up includes a separate executable Modify task. Warm-up choices and drafts persist independently of the main editor and do not affect the independent classification of the main workout.
+
+Python errors, missing numeric returns, selected boundary failures, and corroborated expression patterns are evidence categories. Exact structural rules are limited to the warehouse exercise. The fallback describes an actual result and asks the learner to check it against the requirements. Recommendations prefer distinct unresolved activities when available. Hint levels, coaching exposure, and corrected cases remain separate. A full solution unlocks a distinct transfer exercise, and an assisted pass on the original exercise remains assisted.

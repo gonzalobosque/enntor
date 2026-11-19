@@ -45,10 +45,10 @@ export function Console({ runs, printedLabel = 'stdout' }: { runs: ExecutionResu
   );
 }
 
-export function ExerciseEditor({ stage, exercise, draftKey, hints, priorPass, feedback, onHint, onAttempt, onBusy, onDraftFailure }: {
-  stage: 'Modify' | 'Build' | 'Make'; exercise: Exercise; draftKey: string; hints: HintLevel[];
+export function ExerciseEditor({ stage, exercise, draftKey, hints, priorPass, feedback, onHint, onAttempt, onBusy, onDraftFailure, onEdit }: {
+  stage: 'Modify' | 'Build' | 'Make' | 'Practice'; exercise: Exercise; draftKey: string; hints: HintLevel[];
   priorPass: boolean; feedback?: TeachingProse; onHint: (level: HintLevel) => void;
-  onAttempt: (attempt: Submission) => void; onBusy: (value: boolean) => void; onDraftFailure: (value: boolean) => void;
+  onAttempt: (attempt: Submission) => void; onBusy: (value: boolean) => void; onDraftFailure: (value: boolean) => void; onEdit?: () => void;
 }) {
   const initialCode = exercise.starterCode!;
   const archiveKey = `${draftKey}.previous`;
@@ -70,6 +70,7 @@ export function ExerciseEditor({ stage, exercise, draftKey, hints, priorPass, fe
   }, []);
 
   function saveCode(value: string) {
+    onEdit?.();
     setDraftNotice('');
     setCode(value);
     setRuns([]);
@@ -100,6 +101,7 @@ export function ExerciseEditor({ stage, exercise, draftKey, hints, priorPass, fe
       setDraftNotice('Could not safely save your draft. The editor was kept as-is.');
       return;
     }
+    onEdit?.();
     setCode(value);
     setRuns([]);
     setGrade(undefined);
@@ -145,7 +147,7 @@ export function ExerciseEditor({ stage, exercise, draftKey, hints, priorPass, fe
         <section className="pilot-section" aria-label={`${stage} · ${exercise.title}`}>
           {stage !== 'Build' && <h2 className="pilot-stage-heading">{stage}</h2>}
           <h3 className="pilot-exercise-heading" id={`${exercise.id}-heading`}>{exercise.title}</h3>
-          <p><TeachingProseText content={exercise.prompt} /></p>
+          <p className="exercise-prompt"><TeachingProseText content={exercise.prompt} /></p>
           <ExerciseHints hints={exercise.hints} revealed={hints} busy={busy} onReveal={onHint} />
           <p className="python-editor-label">{stage} Python code</p>
           <Suspense fallback={<p role="status">Loading the Python editor…</p>}>
@@ -206,7 +208,7 @@ export function ExerciseEditor({ stage, exercise, draftKey, hints, priorPass, fe
                   </tr>;
                 })}</tbody>
               </table>
-              <p className="muted">These checks cover the listed cases. Lesson mastery requires independent practice.</p>
+              <p className="muted">{stage === 'Practice' ? 'These checks cover the listed cases.' : 'These checks cover the listed cases. Lesson mastery requires independent practice.'}</p>
             </div>
           )}
         </section>

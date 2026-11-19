@@ -242,3 +242,4 @@ h1 span { color: var(--accent); }
 }
 .pilot-exercise-heading { color: var(--text); font-size: 1.125rem; font-weight: 600; line-height: 1.4; margin: 0 0 .55rem; }
 .pilot .teaching-keyword { font-weight: 700; color: var(--text); }
+.exercise-prompt { white-space: pre-line; }
