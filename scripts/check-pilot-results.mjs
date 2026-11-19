@@ -16,6 +16,25 @@ try {
     await button('Check solution', scope).press('Enter');
     await scope.getByText('All public cases passed.', { exact: true }).waitFor();
   };
+  const checkHeadingStyles = async () => {
+    for (const theme of ['light', 'dark']) {
+      if (await page.locator('html').getAttribute('data-theme') !== theme) {
+        await button('Switch to ' + theme + ' mode').press('Enter');
+      }
+      const headings = await page.locator('.pilot-stage-heading').evaluateAll(nodes => nodes.map(node => {
+        const css = getComputedStyle(node);
+        const probe = document.createElement('span');
+        probe.style.color = 'var(--teaching-code-accent)';
+        node.append(probe);
+        const matchingAccent = css.color === getComputedStyle(probe).color;
+        probe.remove();
+        return { name: node.textContent, font: css.fontFamily, weight: css.fontWeight, matchingAccent };
+      }));
+      assert.deepEqual(headings.map(({ name }) => name), ['Learn', 'Predict', 'Investigate', 'Modify', 'Build', 'Make']);
+      assert(headings.every(({ font, weight, matchingAccent }) => font.includes('Space Grotesk') && weight === '700' && matchingAccent));
+      assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+    }
+  };
   const evidence = () => page.evaluate(() => Object.keys(localStorage)
     .filter(key => key.startsWith('enntor.evidence.v1.')).map(key => JSON.parse(localStorage.getItem(key))));
   await page.goto(report);
@@ -24,9 +43,25 @@ try {
   await button('Continue to Predict').press('Enter');
   await page.getByLabel('Your prediction', { exact: true }).fill('30');
   await button('Commit prediction & run').press('Enter');
+  await page.getByText(/Printed result\s+22/).waitFor();
+  const predict = section('Predict');
+  assert.equal(await predict.getByText(/stdout/).count(), 0);
   await page.getByLabel('Yes, I added first').check();
   await page.getByLabel('Follow-up prediction').fill('13');
   await button('Check prediction').press('Enter');
+  const modify = section(/^Modify/);
+  await button('Show hint', modify).waitFor();
+  assert.equal(await button('Another hint', modify).count(), 0);
+  assert.equal(await button('Reveal complete solution', modify).count(), 0);
+  await button('Show hint', modify).press('Enter');
+  await modify.getByText(/Which part of the result changes/).waitFor();
+  await button('Another hint', modify).press('Enter');
+  await button('Another hint', modify).press('Enter');
+  await button('Reveal complete solution', modify).waitFor();
+  await modify.getByText(/Independent skill requires a fresh problem/).waitFor();
+  await page.reload();
+  await modify.getByText(/Which part of the result changes/).waitFor();
+  assert.deepEqual((await evidence())[0].hints.map(({ level }) => level), ['H0', 'H1', 'H2']);
   await verify(section(/^Modify/), 'Modify Python code',
     'def total(base, extra):\n    return (base + extra) * 3');
   await page.getByLabel(/from each row/).check();
@@ -35,6 +70,14 @@ try {
   await verify(section(/^Build · Build/), 'Build Python code',
     'def available(capacity, reserved):\n    return capacity * 2 - reserved');
   const make = section(/^Make · Write a theatre/);
+  await checkHeadingStyles();
+  const keywords = await page.locator('.teaching-keyword').evaluateAll(nodes => nodes.map(node => ({
+    name: node.textContent, bold: getComputedStyle(node).fontWeight === '700',
+    mono: getComputedStyle(node).fontFamily.includes('monospace'),
+  })));
+  for (const name of ['def', 'return', 'pass']) assert(keywords.some(keyword => keyword.name === name && keyword.bold && keyword.mono));
+  assert(await make.locator('code.teaching-function').count());
+  assert(await make.locator('strong.teaching-variable').count());
   assert.match(await make.getByRole('textbox').innerText(), /^# /);
   await button('Save for later').press('Enter');
   await page.getByRole('link', { name: /Open pilot lesson/ }).press('Enter');

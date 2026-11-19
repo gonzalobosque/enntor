@@ -5,7 +5,7 @@ export function unknownTeachingNames(prose: TeachingProse, introduced: Iterable<
   if (typeof prose === 'string') return [];
   const known = new Set(introduced);
   return prose.flatMap((part) => {
-    if (typeof part === 'string' || part.role === 'code') return [];
+    if (typeof part === 'string' || (part.role === 'code' || part.role === 'keyword')) return [];
     const name = part.role === 'function' ? part.text.replace(/\(\)$/, '') : part.text;
     return known.has(name) ? [] : [name];
   });

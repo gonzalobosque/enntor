@@ -1,3 +1,4 @@
+import { ExerciseHints } from './ExerciseHints';
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import type { Exercise, HintLevel, TeachingProse } from '../courses/contracts';
 import type { ExecutionResult, GradeResult } from '../execution/contracts';
@@ -25,7 +26,7 @@ function readArchive(archiveKey: string): string[] {
   return entries;
 }
 
-export function Console({ runs }: { runs: ExecutionResult[] }) {
+export function Console({ runs, printedLabel = 'stdout' }: { runs: ExecutionResult[]; printedLabel?: string }) {
   if (!runs.length) return null;
   const last = runs[runs.length - 1];
   const details = runs.filter((result) => result.stdout || result.stderr || result.error);
@@ -35,7 +36,7 @@ export function Console({ runs }: { runs: ExecutionResult[] }) {
       {details.map((result) => (
         <div key={result.requestId}>
           {runs.length > 1 && <strong>Test {runs.indexOf(result) + 1}</strong>}
-          {result.stdout && <pre>stdout{'\n'}{result.stdout}</pre>}
+          {result.stdout && <pre>{printedLabel}{'\n'}{result.stdout}</pre>}
           {result.stderr && <pre>stderr{'\n'}{result.stderr}</pre>}
           {result.error && <pre>{result.status === 'error' ? 'Exception or runtime error\n' : ''}{result.error.message}</pre>}
         </div>
@@ -141,16 +142,11 @@ export function ExerciseEditor({ stage, exercise, draftKey, hints, priorPass, fe
   }
 
   return (
-        <section className="pilot-section" aria-labelledby={`${exercise.id}-heading`}>
-          <h2 id={`${exercise.id}-heading`}>{stage} · {exercise.title}</h2>
+        <section className="pilot-section" aria-label={`${stage} · ${exercise.title}`}>
+          {stage !== 'Build' && <h2 className="pilot-stage-heading">{stage}</h2>}
+          <h3 className="pilot-exercise-heading" id={`${exercise.id}-heading`}>{exercise.title}</h3>
           <p><TeachingProseText content={exercise.prompt} /></p>
-          {exercise.hints.map((hint, index) => hints.includes(hint.level)
-            ? <p className="pilot-feedback" key={hint.level}><TeachingProseText content={hint.text} /></p>
-            : <div className="pilot-controls" key={hint.level}>
-              <button disabled={busy || !exercise.hints.slice(0, index).every(({ level }) => hints.includes(level))} onClick={() => onHint(hint.level)}>
-                {hint.level === 'H4' ? 'Reveal complete solution (solution-level help)' : hint.level === 'H3' ? 'Reveal implementation hint' : `Show hint ${index + 1}`}
-              </button>
-            </div>)}
+          <ExerciseHints hints={exercise.hints} revealed={hints} busy={busy} onReveal={onHint} />
           <p className="python-editor-label">{stage} Python code</p>
           <Suspense fallback={<p role="status">Loading the Python editor…</p>}>
             <PythonEditor id={`${exercise.id}-editor`} label={`${stage} Python code`}

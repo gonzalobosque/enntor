@@ -97,3 +97,7 @@ Build records a requirement check and a graded scaffolded function before Make. 
 CodeMirror 6 is loaded when an exercise editor opens. Its Python parser governs indentation and highlighting. Draft text uses the existing draft keys and persistence behavior. Modify's hint revision has a new exercise version and retains its prior draft key.
 
 The version 1 local evidence record gained optional Build fields. Earlier sessions and completion timestamps are retained. Unfinished sessions resume with the Build requirement, and their existing submissions remain readable. Finish writes completion before opening the report route. Ratings update that completion in place, and older completions remain valid without Build evidence.
+
+## E12 · Teaching consistency
+
+Teaching prose uses explicit semantic roles for functions, variables, keywords, and ordinary code. Exercise hints disclose one action at a time and retain revealed levels in the existing evidence record. [Progressive independence with controlled difficulty](../teaching-guidelines.md) defines the authoring and review standard.

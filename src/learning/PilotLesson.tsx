@@ -93,7 +93,8 @@ function LessonSession({ evidence, results }: { evidence: ReturnType<typeof useE
       hints={visibleHints} feedback={stage === 'Modify' ? predictionCoaching.modifyFeedback : undefined}
       onBusy={(value) => setBusy((old) => ({ ...old, [exercise.id]: value }))}
       onDraftFailure={(value) => setDraftFailures((old) => ({ ...old, [exercise.id]: value }))}
-      onHint={(level: HintLevel) => update((old) => ({ ...old, hints: [...old.hints,
+      onHint={(level: HintLevel) => update((old) => ({ ...old, hints: old.hints.some((hint) => hint.exercise.id === exercise.id &&
+          hint.exercise.version === exercise.version && hint.level === level) ? old.hints : [...old.hints,
         { exercise: { id: exercise.id, version: exercise.version }, level, at: now() }] }))}
       onAttempt={(attempt) => record({ ...attempt, hints: [...new Set([...priorHints, ...attempt.hints])] })} />;
   }
@@ -137,7 +138,8 @@ function LessonSession({ evidence, results }: { evidence: ReturnType<typeof useE
       {storageAlert}
       {session.completion && <p className="pilot-success">Lesson completed and saved. <a className="pilot-inline-link" href={`#/${pilotResultsPath}`}>View learning report</a></p>}
       <section className="pilot-section" aria-labelledby="learn-heading">
-        <h2 id="learn-heading">Learn · Trace backwards, execute forwards</h2>
+        <h2 id="learn-heading" className="pilot-stage-heading">Learn</h2>
+        <h3 className="pilot-exercise-heading">Trace backwards, execute forwards</h3>
         {lesson.teachingBlocks.filter(({ type }) => type !== 'warning').map((block) => <TeachingText key={block.id} block={block} />)}
         {!session.learnedAt && !session.completion && <div className="pilot-controls">
           <button className="pilot-primary" onClick={() => update((old) => ({ ...old, learnedAt: now() }))}>Continue to Predict</button>
@@ -145,7 +147,7 @@ function LessonSession({ evidence, results }: { evidence: ReturnType<typeof useE
       </section>
       {!session.completion && <>
         {session.learnedAt && <section className="pilot-section" aria-labelledby="predict-heading">
-          <h2 id="predict-heading">Predict</h2>
+          <h2 id="predict-heading" className="pilot-stage-heading">Predict</h2>
           <p><TeachingProseText content={prediction.prompt} /></p>
           <pre>{prediction.starterCode}</pre>
           <form onSubmit={(event) => { event.preventDefault(); void runPrediction(); }}>
@@ -159,7 +161,7 @@ function LessonSession({ evidence, results }: { evidence: ReturnType<typeof useE
               {predicting && <button type="button" onClick={() => active.current?.abort()}>Stop</button>}
             </div>
           </form>
-          {lastRun && <Console runs={[lastRun]} />}
+          {lastRun && <Console runs={[lastRun]} printedLabel="Printed result" />}
         </section>}
         {output !== undefined && session.prediction && <PredictionReview answer={session.prediction.answer} output={output}
           warning={lesson.teachingBlocks.find(({ type }) => type === 'warning')}
@@ -170,7 +172,8 @@ function LessonSession({ evidence, results }: { evidence: ReturnType<typeof useE
             { id: crypto.randomUUID(), answer: submitted, correct, expected: predictionCoaching.followUp.expected, at: now() }] }))} />}
         {state.investigated && editor(modification, 'Modify')}
         {state.modified && <section className="pilot-section" aria-labelledby="build-plan-heading">
-          <h2 id="build-plan-heading">Build · Plan the function</h2>
+          <h2 id="build-plan-heading" className="pilot-stage-heading">Build</h2>
+          <h3 className="pilot-exercise-heading">Plan the function</h3>
           <p><TeachingProseText content={buildPlan.prompt} /></p>
           <p>Inputs go in the declaration. Decide what the output represents before writing the body.</p>
           <fieldset disabled={session.buildPlan?.correct}>

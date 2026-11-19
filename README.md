@@ -111,3 +111,5 @@ npx playwright install chromium
 ENNTOR_TEST_ORIGIN=http://127.0.0.1:5173 node scripts/check-pilot-editor.mjs
 ENNTOR_TEST_ORIGIN=http://127.0.0.1:5173 node scripts/check-pilot-results.mjs
 ```
+
+For activity design and review, see [Progressive independence with controlled difficulty](docs/teaching-guidelines.md).

@@ -3,6 +3,7 @@ import { pythonEngineId, pythonVersion } from '../execution/python-config';
 
 const fn = (text: string): TeachingInline => ({ role: 'function', text });
 const name = (text: string): TeachingInline => ({ role: 'variable', text });
+const keyword = (text: string): TeachingInline => ({ role: 'keyword', text });
 const code = (text: string): TeachingInline => ({ role: 'code', text });
 
 const version = '1.0.0';
@@ -34,7 +35,7 @@ const modify: Exercise = {
       ' equal to 6. Which part of the result changes when you change the first input?'] },
     { level: 'H1', text: ['Trace the current expression. What is being repeated three times? Compare that with the quantity the requirement describes.'] },
     { level: 'H2', text: ['Work out the combined amount as its own step. Use that amount to calculate the result.'] },
-    { level: 'H4', text: ['Inside ', fn('total()'), ', write ', code('return (base + extra) * 3'), '.'] },
+    { level: 'H4', text: ['Inside ', fn('total()'), ', write ', keyword('return'), ' ', code('(base + extra) * 3'), '.'] },
   ],
   starterCode: 'def total(base, extra):\n    return base + extra * 3\n',
   execution: { ...execution, entryPoint: 'total' },
@@ -58,14 +59,14 @@ export const buildPlan = {
     { id: 'per-row', text: 'The number of seats left after subtracting the reservation from each row.' },
   ],
   correct: 'remaining',
-  syntax: [code('def'), ' starts the function declaration. ', fn('available()'), ' takes ',
+  syntax: [keyword('def'), ' starts the function declaration. ', fn('available()'), ' takes ',
     name('capacity'), ' and ', name('reserved'), ' as parameters. The colon starts the body. Indent the body by four spaces and use ',
-    code('return'), ' to hand back the value.'],
+    keyword('return'), ' to hand back the value.'],
 };
 
 const build: Exercise = {
   id: 'F01.01.build', version, lessonId, title: 'Build a seat-count function', kind: 'write',
-  prompt: ['The declaration is supplied. Replace ', code('pass'), ' with an indented ', code('return'), ' statement in ', fn('available()'),
+  prompt: ['The declaration is supplied. Replace ', keyword('pass'), ' with an indented ', keyword('return'), ' statement in ', fn('available()'),
     '. Start with twice ', name('capacity'), ' and subtract ', name('reserved'),
     ' once. For 6 seats per row and 3 reserved seats, return 9. Inputs are nonnegative integers and reservations never exceed capacity across both rows.'],
   conceptIds: predict.conceptIds, difficulty: 1,
@@ -90,7 +91,7 @@ const make: Exercise = {
   hints: [
     { level: 'H0', text: ['Think about which cost repeats with ', name('tickets'), ' and which cost is charged once.'] },
     { level: 'H1', text: ['Compute the ticket subtotal first. Then add the booking fee to that subtotal.'] },
-    { level: 'H3', text: ['Inside ', fn('receipt()'), ', use ', code('return tickets * price + 4'), '.'] },
+    { level: 'H3', text: ['Inside ', fn('receipt()'), ', use ', keyword('return'), ' ', code('tickets * price + 4'), '.'] },
   ],
   execution: { ...execution, entryPoint: 'receipt' },
   grading: {

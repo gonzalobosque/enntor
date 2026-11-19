@@ -17,7 +17,7 @@ export function PredictionReview({ answer, output, warning, reasoning, onReasoni
 
   return (
     <section className="pilot-section" aria-labelledby="investigate-heading">
-      <h2 id="investigate-heading">Investigate</h2>
+      <h2 id="investigate-heading" className="pilot-stage-heading">Investigate</h2>
       <p className={matched ? 'pilot-success' : undefined}>{matched ? <><strong>That's right!</strong> Python printed <code>{output}</code>, matching your prediction.</> : `You predicted ${answer}. Python printed ${output}.`}</p>
       {suggested ? (
         <>

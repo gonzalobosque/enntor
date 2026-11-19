@@ -10,7 +10,7 @@ export interface ContentReference {
   version: ContentVersion;
 }
 
-export type TeachingInline = string | { role: 'function' | 'variable' | 'code'; text: string };
+export type TeachingInline = string | { role: 'function' | 'variable' | 'keyword' | 'code'; text: string };
 
 export type TeachingProse = string | TeachingInline[];
 
