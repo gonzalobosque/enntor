@@ -7,11 +7,14 @@ import type { LessonEvidence, Sweat } from './evidence';
 export function LessonReport({ item, session, reports, onReport, storageAlert, onSweat }: {
   item: LoadedLesson; session: LessonEvidence; reports: LessonEvidence[]; onReport: (id: string) => void; storageAlert: ReactNode; onSweat: (sweat: Sweat) => void;
 }) {
-  const { lesson, transfer, sequence } = item;
+  const { lesson, make: mainExercise, transfer, sequence } = item;
   const completion = session.completion;
   const prediction = session.prediction;
   const actual = prediction?.runs.find((run) => run.status === 'completed')?.stdout.trim();
   const make = session.submissions.find(({ id }) => id === completion?.makeId);
+  const assistedMake = make?.exercise.id === transfer.id && session.submissions.find((attempt) =>
+    attempt.exercise.id === mainExercise.id && attempt.grade?.verdict === 'passed' &&
+    (attempt.hints.length > 0 || attempt.priorSolutionHelp));
   const failed = session.submissions.filter(({ grade }) => grade?.verdict === 'failed');
   const buildMistakes = session.buildChecks?.filter(({ correct }) => !correct) ?? [];
   const followUpFailures = session.followUps.filter(({ correct }) => !correct);
@@ -37,9 +40,10 @@ export function LessonReport({ item, session, reports, onReport, storageAlert, o
           {session.followUps.length > 0 && <li>Follow-up passed after {session.followUps.length} {session.followUps.length === 1 ? 'check' : 'checks'}.</li>}
           <li>Modify passed.</li>
           <li>{completion.buildId ? 'Build passed.' : 'Build was introduced after this session.'}</li>
+          {assistedMake && <li>Original Make passed with help{assistedMake.hints.length ? ` (${assistedMake.hints.join(', ')})` : ''}.</li>}
           <li>{make?.exercise.id === transfer.id ? 'Fresh Make problem passed.' : 'Make passed.'}</li>
         </ul>
-        <p><strong>{completion.independent ? 'Independent skill demonstrated on this problem.'
+        <p><strong>{completion.independent ? make?.exercise.id === transfer.id ? 'Independent skill demonstrated on the transfer problem.' : 'Independent skill demonstrated on this problem.'
           : make?.hints.length ? 'Make passed with help.' : 'Make passed on a previously seen problem.'}</strong></p>
         {make?.hints.length ? <p>Recorded help: {make.hints.join(', ')}. {hasSolutionHelp(make.hints) ? 'Includes implementation help.' : 'Conceptual help.'}</p> : null}
       </section>

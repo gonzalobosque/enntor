@@ -106,6 +106,8 @@ try {
   await press('Finish lesson');
   await page.waitForURL(at('F01.02', true));
   await page.getByText('Fresh Make problem passed.').waitFor();
+  await page.getByText('Original Make passed with help (H0, H1, H4).').waitFor();
+  await page.getByText('Independent skill demonstrated on the transfer problem.').waitFor();
   const completed = await recordFor('F01.02');
   assert(completed.completion.independent);
   assert(completed.submissions.some(item => item.hints.includes('H4')));
@@ -130,7 +132,12 @@ try {
   await page.keyboard.press('Tab');
   assert.equal(await rackEditor.evaluate(node => node === document.activeElement), false);
   assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
-  await capture('identity-make-dark-mobile', rack);
+  if (screenshots) {
+    await page.setViewportSize({ width: 390, height: 1050 });
+    await rack.scrollIntoViewIfNeeded();
+    await capture('identity-make-dark-mobile', page);
+    await page.setViewportSize({ width: 390, height: 840 });
+  }
   await grade(rack, 'def rack_badge(primary, spare, slot):\n    first = [primary]\n    slots = [first, first, [spare]]\n    target = slots[slot]\n    return int(target is first) + int(target == first)');
   await press('Finish lesson');
   await page.waitForURL(at('F01.03', true));
