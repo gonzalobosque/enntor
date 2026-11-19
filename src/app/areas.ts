@@ -28,10 +28,13 @@ export const areas = [
 export type AreaId = typeof areas[number]['id'];
 export const pilotPath = 'climb/F01.01';
 export const pilotResultsPath = 'climb/F01.01/results';
-export type Route = 'home' | AreaId | typeof pilotPath | typeof pilotResultsPath;
+export const gymWorkoutPath = 'gym/workout';
+export const gymResultsPath = 'gym/results';
+export type Route = 'home' | AreaId | typeof pilotPath | typeof pilotResultsPath | typeof gymWorkoutPath | typeof gymResultsPath;
 
 export function readRoute(): Route {
   const path = window.location.hash.replace(/^#\/?/, '');
+  if (path === gymWorkoutPath || path === gymResultsPath) return path;
   if (path === pilotResultsPath) return pilotResultsPath;
   if (path === pilotPath) return pilotPath;
   return areas.find((area) => area.id === path)?.id ?? 'home';

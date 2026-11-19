@@ -28,14 +28,17 @@ export function useWorkoutEvidence() {
   const unsaved = useRef<GymRecord[]>([]);
 
   function write(record: GymRecord) {
+    let saved = false;
     try {
       saveGymRecord(record);
+      saved = true;
       unsaved.current = unsaved.current.filter((item) => recordId(item) !== recordId(record));
       setLoaded(load());
     } catch {
       unsaved.current = mergeGymRecord(unsaved.current, record);
     }
     setPending(unsaved.current);
+    return saved;
   }
 
   function retry() {

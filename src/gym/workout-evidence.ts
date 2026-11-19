@@ -1,5 +1,5 @@
 import type { ContentReference, HintLevel } from '../courses/contracts';
-import type { Submission } from '../learning/evidence';
+import type { Submission, Sweat } from '../learning/evidence';
 import type { Diagnostic } from './diagnostic';
 import type { Recommendation } from './recommendation';
 
@@ -8,6 +8,21 @@ interface WorkoutRecord {
   origin: 'gym';
   conceptId: string;
   exercise: ContentReference;
+  sessionId?: string;
+}
+
+export interface WorkoutSession extends WorkoutRecord {
+  kind: 'session';
+  id: string;
+  startedAt: string;
+  legacyDraft?: boolean;
+  completion?: {
+    at: string;
+    attemptIds: string[];
+    outcome: 'passed' | 'not-passed';
+    evidenceId: string;
+    sweat: Sweat;
+  };
 }
 
 export interface WorkoutHint extends WorkoutRecord {
@@ -21,7 +36,7 @@ export interface WorkoutWarmUp extends WorkoutRecord {
   kind: 'warm-up';
   id: string;
   warmUpId: string;
-  decision: 'completed' | 'skipped';
+  decision: 'opened' | 'completed' | 'skipped';
   opened: boolean;
   at: string;
 }
@@ -36,6 +51,7 @@ export interface WorkoutCoaching {
 export interface WorkoutAttempt extends WorkoutRecord {
   kind: 'attempt';
   submission: Submission;
+  activity?: 'warm-up' | 'practice' | 'transfer';
   recommendation: { reason: Recommendation['reason']; evidenceIds: string[] };
   independent: boolean;
   warmUpRecordId?: string;
@@ -44,7 +60,7 @@ export interface WorkoutAttempt extends WorkoutRecord {
   correctedAttemptIds?: string[];
 }
 
-export type GymRecord = WorkoutHint | WorkoutWarmUp | WorkoutAttempt;
+export type GymRecord = WorkoutSession | WorkoutHint | WorkoutWarmUp | WorkoutAttempt;
 
 const prefix = 'enntor.gym.v1.';
 
@@ -66,7 +82,7 @@ export function readGymRecords(): GymRecord[] {
     const record: GymRecord = JSON.parse(raw);
     if (record.schemaVersion !== 1 || record.origin !== 'gym' ||
         !record.exercise?.id || !record.exercise.version || typeof record.conceptId !== 'string' ||
-        !['hint', 'warm-up', 'attempt'].includes(record.kind) || prefix + recordId(record) !== key ||
+        !['session', 'hint', 'warm-up', 'attempt'].includes(record.kind) || prefix + recordId(record) !== key ||
         (record.kind === 'attempt' && (!record.submission.exercise?.id ||
           !Array.isArray(record.submission.hints) || typeof record.submission.source !== 'string' ||
           typeof record.submission.startedAt !== 'string' ||

@@ -52,6 +52,9 @@ test('Gym recommendations follow observations, corrections, and help instead of 
       submission: submission(id, cargoWorkout.id, day, verdict, hints),
     });
     const misses = [attempt('g1', 5, 'failed', false), attempt('g2', 6, 'failed', false)];
+    const varied = recommend([rejected], misses);
+    assert.equal(varied.reason, 'repeated-errors');
+    assert.deepEqual(varied.evidence.map(({ id }) => id), ['pred-1', 'g2']);
     assert.equal(recommend([], misses).reason, 'repeated-errors');
     assert.equal(recommend([], [...misses, attempt('g3', 7, 'passed', false, ['H0'])]).reason, 'try-unaided');
     const coached = { ...attempt('g3', 7, 'passed', false), nudgeAttemptIds: ['g1'] };

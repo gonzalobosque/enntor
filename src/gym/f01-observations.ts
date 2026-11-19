@@ -52,7 +52,7 @@ export function f01Observations(sessions: LessonEvidence[], records: GymRecord[]
     }
   }
   for (const record of records) {
-    if (record.kind !== 'attempt' || record.conceptId !== f01Concept) continue;
+    if (record.kind !== 'attempt' || record.activity === 'warm-up' || record.conceptId !== f01Concept) continue;
     const item = submissionObservation(record.submission, 'gym', record.independent, !!record.nudgeAttemptIds?.length);
     if (item) observations.push(item);
   }

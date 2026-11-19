@@ -24,7 +24,8 @@ export function recommendPractice(observations: PracticeObservation[]): Recommen
     else open.set(item.activity, [...(open.get(item.activity) ?? []), item]);
   }
 
-  const repeated = [...open.values()].filter((items) => items.length >= 2)
+  const contexts = [...open.values()].map((items) => items.at(-1)!).sort((a, b) => a.at.localeCompare(b.at));
+  const repeated = contexts.length >= 2 ? contexts : [...open.values()].filter((items) => items.length >= 2)
     .sort((a, b) => b[b.length - 1].at.localeCompare(a[a.length - 1].at))[0];
   const independent = ordered.filter((item) => item.independent).at(-1);
   const recent = ordered[ordered.length - 1];

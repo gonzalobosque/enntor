@@ -28,3 +28,11 @@ Reveal hints in order, starting with questions or observations. Record which hin
 - A warm-up recalls the concept and invites a small mental check before the learner starts. Keep it optional and leave the workout's implementation open.
 - A conceptual nudge follows a checked mistake. Show a concrete observation, ask one question, and keep any explanation of the learner's reasoning tentative. Let the learner confirm or reject a specific explanation. Avoid repeating a nudge already shown for the workout.
 - A hint appears on request. It can give progressively more guidance than a nudge, up to clearly labeled solution help. Record nudge exposure and requested hints separately when interpreting later performance.
+
+## Exercise clarity and Gym progression
+
+- Check that the scenario identifies the relevant quantities, units, and expected output in the order the reader needs them. Give the interface, valid inputs, assumptions, and limits explicitly.
+- Calculate each written example independently and compare it with the executable public cases. Cover boundaries that follow from the stated constraints.
+- Remove story details that compete with the skill being practiced. Ask for the required outcome and leave the implementation open.
+- Match the warm-up to the next activity. Predict can use a brief refresher, Modify can review a code structure, Build can use guided construction, and Make can use a short Modify task in another context. Use learner evidence to focus the refresher.
+- Ground one nudge in an observed check. Mark any proposed reasoning as tentative. Offer the full worked explanation after the requested hint ladder, then use a fresh problem to check transfer.

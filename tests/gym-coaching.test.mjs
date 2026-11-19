@@ -21,7 +21,7 @@ test('Cargo coaching requires a structural match corroborated by failed cases', 
     assert.equal(result.hypothesis.id, 'reversed-subtraction');
     assert.match(result.hypothesis.question, /may have/);
     assert.match(result.nudge.question, /no pallets/);
-    for (const text of [result.hypothesis.question, result.nudge.question, JSON.stringify(evaluationWarmUp)]) {
+    for (const text of [result.hypothesis.question, result.nudge.question, evaluationWarmUp.refresher, evaluationWarmUp.simpleCase]) {
       assert.doesNotMatch(text, /cargo_weight|pallets\s*\*\s*4|return\s\w/);
     }
     assert.equal(diagnoseCargo(cargoWorkout, sample(
@@ -37,6 +37,24 @@ test('Cargo coaching requires a structural match corroborated by failed cases', 
     }
     assert.equal(diagnoseCargo(cargoWorkout, sample(
       'def cargo_weight(gross, pallets):\n    return gross - pallets * 4', [19, 23, 0], 'passed')), undefined);
+    const grouped = diagnoseCargo(cargoWorkout, sample(
+      'def cargo_weight(gross, pallets):\n    return (gross - pallets) * 4', [112, 92, 24]));
+    assert.equal(grouped.observation.kind, 'grouping');
+    assert.match(grouped.hypothesis.question, /may have/);
+    const missing = diagnoseCargo(cargoWorkout, sample(
+      'def cargo_weight(gross, pallets):\n    pass', [null, null, null]));
+    assert.equal(missing.observation.kind, 'missing-return');
+    assert.equal(missing.hypothesis, undefined);
+    assert.equal(diagnoseCargo(cargoWorkout, sample('def cargo_weight(gross, pallets):\n    return 19',
+      [19, 19, 19])).observation.kind, 'edge-case');
+    for (const [exception, kind] of [['SyntaxError', 'syntax-error'], ['IndentationError', 'indentation-error'],
+      ['ZeroDivisionError', 'runtime-exception']]) {
+      const result = diagnoseCargo(cargoWorkout, {
+        source: 'bad code', grade: { verdict: 'ungraded' }, runs: [{ status: 'error', error: { message: 'Traceback\n' + exception + ': test' } }],
+      });
+      assert.equal(result.observation.kind, kind);
+      assert.equal(result.hypothesis, undefined);
+    }
     assert.equal(diagnoseCargo(cargoWorkout, sample(reversed, [], 'ungraded')), undefined);
   } finally {
     await vite.close();

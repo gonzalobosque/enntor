@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { useTheme } from '../platform/useTheme';
 import { PilotLesson, pilotTitle } from '../learning/PilotLesson';
-import { areas, pilotPath, pilotResultsPath, readRoute } from './areas';
+import { areas, gymResultsPath, gymWorkoutPath, pilotPath, pilotResultsPath, readRoute } from './areas';
 import type { AreaId } from './areas';
 
 const Gym = lazy(async () => ({ default: (await import('../gym/Gym')).Gym }));
@@ -100,7 +100,7 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    const title = route === pilotResultsPath ? 'F01.01 · Lesson report' : route === pilotPath ? pilotTitle : areas.find((area) => area.id === route)?.title ?? 'Make it your own.';
+    const title = route === gymWorkoutPath ? 'The Gym · Workout' : route === gymResultsPath ? 'The Gym · Results' : route === pilotResultsPath ? 'F01.01 · Lesson report' : route === pilotPath ? pilotTitle : areas.find((area) => area.id === route)?.title ?? 'Make it your own.';
     document.title = `ENNTOR — ${title}`;
     if (previousRoute.current !== route) {
       mainRef.current?.focus();
@@ -120,7 +120,7 @@ export function App() {
         <a className="brand" href="#/" aria-label="ENNTOR home"><span className="brand-mark" aria-hidden="true"><i /><i /><i /></span>ENNTOR<span className="brand-period">.</span></a>
         <nav aria-label="Main navigation">
           <a href="#/" aria-current={route === 'home' ? 'page' : undefined}>Home</a>
-          {areas.map((area) => <a key={area.id} href={`#/${area.id}`} aria-current={route === area.id ? 'page' : (route === pilotPath || route === pilotResultsPath) && area.id === 'climb' ? 'location' : undefined}>{area.title}</a>)}
+          {areas.map((area) => <a key={area.id} href={`#/${area.id}`} aria-current={route === area.id ? 'page' : (route === pilotPath || route === pilotResultsPath) && area.id === 'climb' ? 'location' : (route === gymWorkoutPath || route === gymResultsPath) && area.id === 'gym' ? 'location' : undefined}>{area.title}</a>)}
         </nav>
         <button className="theme-toggle" onClick={toggleTheme} aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`} title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}>
           <span aria-hidden="true">{theme === 'light' ? '☾' : '☀'}</span>
@@ -128,7 +128,7 @@ export function App() {
       </header>
       {saveError && <p className="save-warning" role="status">Your theme changed, but this browser couldn’t save it for your next visit.</p>}
       <main id="main" ref={mainRef} tabIndex={-1}>
-        {route === 'home' ? <Home /> : route === 'gym' ? <Suspense fallback={<p role="status">Loading The Gym…</p>}><Gym /></Suspense> : route === pilotPath || route === pilotResultsPath ? <PilotLesson results={route === pilotResultsPath} /> : <AreaPage route={route} />}
+        {route === 'home' ? <Home /> : (route === 'gym' || route === gymWorkoutPath || route === gymResultsPath) ? <Suspense fallback={<p role="status">Loading The Gym…</p>}><Gym view={route === gymWorkoutPath ? 'workout' : route === gymResultsPath ? 'results' : 'home'} /></Suspense> : route === pilotPath || route === pilotResultsPath ? <PilotLesson results={route === pilotResultsPath} /> : <AreaPage route={route} />}
       </main>
       <footer className="site-footer"><p>Progress you can put to work.</p><p>ENNTOR <span aria-hidden="true">/</span> Learning pilot</p></footer>
     </div>
