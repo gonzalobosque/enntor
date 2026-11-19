@@ -38,7 +38,7 @@ export function GymReport({ session, attempts, hints, warmUps, onSweat }: {
       {hints.some(({ level }) => level === 'H4') && <p>The warehouse solution was revealed.</p>}
       {corrected > 0 && <p>Later checks addressed the observed issue from {corrected} earlier {corrected === 1 ? 'submission' : 'submissions'}.</p>}
       <p>{completion.outcome === 'not-passed' ? 'Next practice: work through one failing case or revisit the warm-up before trying again.'
-        : assisted && !result?.independent ? 'Next practice: try a fresh evaluation-order problem without help when one is available.'
+        : !result?.independent && (assisted || result?.seenInEarlierWorkout) ? 'Next practice: try a fresh evaluation-order problem without help when one is available.'
           : 'Next practice: revisit evaluation order in another context. This result covers the examples checked here.'}</p>
     </section>
     {evaluated.some(({ coaching }) => coaching) && <details className="pilot-section">

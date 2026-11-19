@@ -26,7 +26,7 @@ export function rateWorkout(session: WorkoutSession, sweat: Sweat): WorkoutSessi
   return { ...session, completion: { ...session.completion, sweat } };
 }
 
-export function describeAttempt({ submission, independent, nudgeAttemptIds, activity }: WorkoutAttempt) {
+export function describeAttempt({ submission, independent, nudgeAttemptIds, activity, seenInEarlierWorkout }: WorkoutAttempt) {
   if (submission.grade?.verdict === 'failed') return 'Some public checks failed.';
   if (submission.grade?.verdict === 'passed') {
     if (activity === 'warm-up') return 'Warm-up checks passed.';
@@ -36,6 +36,7 @@ export function describeAttempt({ submission, independent, nudgeAttemptIds, acti
     if (nudgeAttemptIds?.length) return submission.hints.length
       ? 'Passed after conceptual coaching and requested hints.' : 'Passed after conceptual coaching.';
     if (submission.hints.length) return 'Passed with requested hints.';
+    if (seenInEarlierWorkout) return 'Passed without help in this workout. You saw this problem in earlier practice.';
     if (submission.priorPass) return 'Passed again without hints.';
     return 'Passed the public checks.';
   }

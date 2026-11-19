@@ -54,6 +54,7 @@ export interface WorkoutAttempt extends WorkoutRecord {
   activity?: 'warm-up' | 'practice' | 'transfer';
   recommendation: { reason: Recommendation['reason']; evidenceIds: string[] };
   independent: boolean;
+  seenInEarlierWorkout?: boolean;
   warmUpRecordId?: string;
   nudgeAttemptIds?: string[];
   coaching?: WorkoutCoaching;
@@ -68,8 +69,14 @@ export function recordId(record: GymRecord) {
   return record.kind === 'attempt' ? record.submission.id : record.id;
 }
 
-export function saveGymRecord(record: GymRecord) {
-  localStorage.setItem(prefix + recordId(record), JSON.stringify(record));
+export class GymRecordConflict extends Error {}
+
+export function saveGymRecord(record: GymRecord, expected?: GymRecord) {
+  const key = prefix + recordId(record);
+  if (localStorage.getItem(key) !== (expected ? JSON.stringify(expected) : null)) {
+    throw new GymRecordConflict('Gym evidence changed since it was loaded.');
+  }
+  localStorage.setItem(key, JSON.stringify(record));
 }
 
 export function readGymRecords(): GymRecord[] {

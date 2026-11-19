@@ -2,7 +2,7 @@ import { useRef, useState } from 'react';
 import { gymResultsPath, gymWorkoutPath } from '../app/areas';
 import type { Exercise } from '../courses/contracts';
 import { Console, ExerciseEditor } from '../learning/ExerciseEditor';
-import { now, sweatChoices } from '../learning/evidence';
+import { hasSolutionHelp, now, sweatChoices } from '../learning/evidence';
 import type { Submission } from '../learning/evidence';
 import { cargoWorkout, evaluationWarmUp, f01Concept, postcardTransfer, visitorWarmUp } from './f01-workout';
 import { diagnoseCargo } from './cargo-diagnostic';
@@ -81,14 +81,20 @@ export function Gym({ view }: { view: 'home' | 'workout' | 'results' }) {
       opened: decision === 'opened' || !!open, at: now() });
   }
 
+  function seenBefore(exercise: Exercise) {
+    return records.some((record) => record.sessionId !== session?.id &&
+      record.exercise.id === exercise.id && record.exercise.version === exercise.version &&
+      (record.kind === 'attempt' || (record.kind === 'hint' && hasSolutionHelp([record.level]))));
+  }
+
   function editor(exercise: Exercise, activity: 'warm-up' | 'practice' | 'transfer', round?: string) {
     if (!session || session.completion) return null;
     const exerciseRecord = { ...base, exercise: exerciseRef(exercise), sessionId: session.id };
     const matching = (record: { exercise: { id: string; version: string } }) =>
       record.exercise.id === exercise.id && record.exercise.version === exercise.version;
-    const previous = allAttempts.filter(matching);
-    const revealed = records.filter((record): record is WorkoutHint => record.kind === 'hint' && matching(record));
-    const levels = [...new Set(revealed.map(({ level }) => level))];
+    const previous = attempts.filter(matching);
+    const levels = [...new Set(hints.filter(matching).map(({ level }) => level))];
+    const seenInEarlierWorkout = seenBefore(exercise);
     const previouslyNudged = previous.filter(({ coaching }) => coaching?.exposure).map(({ submission }) => submission.id);
     const priorPass = previous.some(({ submission }) => submission.grade?.verdict === 'passed');
     const storageKey = 'enntor.draft.' + exercise.id + '.' + exercise.version;
@@ -115,20 +121,26 @@ export function Gym({ view }: { view: 'home' | 'workout' | 'results' }) {
           nudgeAttemptIds: previouslyNudged, correctedAttemptIds: corrected.map(({ submission: earlier }) => earlier.id),
           coaching: diagnostic && { observation: diagnostic.observation, hypothesis: diagnostic.hypothesis,
             exposure: activity !== 'warm-up' && !alreadyShown ? { ...diagnostic.nudge, shownAt: now() } : undefined },
+          seenInEarlierWorkout,
           independent: activity !== 'warm-up' && !data.unreadable && submission.grade?.verdict === 'passed' &&
-            !submission.hints.length && !previouslyNudged.length && !submission.priorPass,
+            !submission.hints.length && !previouslyNudged.length && !submission.priorPass && !seenInEarlierWorkout,
         });
       }} />;
   }
 
   const shown = currentCheck === undefined ? attempts.filter(({ activity }) => activity !== 'warm-up').at(-1)
     : attempts.find(({ submission }) => submission.id === currentCheck);
-  const showTransfer = records.some((record) => record.kind === 'hint' && record.exercise.id === cargoWorkout.id && record.level === 'H4');
+  const showTransfer = hints.some(({ exercise, level }) =>
+    exercise.id === cargoWorkout.id && exercise.version === cargoWorkout.version && level === 'H4');
   const difficulty = sweatChoices.find(([, value]) => value === data.rating)?.[0];
 
   return <article className="pilot gym">
     <a className="back-link" href={view === 'home' ? '#/' : '#/gym'}>{view === 'home' ? '← Back to home' : '← The Gym'}</a>
     <h1>The Gym</h1>
+    {data.conflict && <div className="pilot-feedback" role="alert">
+      <p>Another tab changed this workout. Your update was not saved. The saved version is now shown. Submitted checks are kept in workout history. Use one editing tab per workout.</p>
+      <button onClick={data.dismissConflict}>Dismiss</button>
+    </div>}
     {(data.unreadable || data.pending.length > 0) && <div className="pilot-feedback" role="alert">
       <p>{data.pending.length ? 'Gym progress could not be saved. Keep this page open and retry.' : 'Some learning history could not be read from this browser.'}</p>
       <button onClick={data.retry}>{data.pending.length ? 'Retry saving' : 'Retry loading history'}</button>
@@ -179,7 +191,9 @@ export function Gym({ view }: { view: 'home' | 'workout' | 'results' }) {
       </WarmUp>
       {warmUps.some(({ decision }) => decision !== 'opened') && editor(cargoWorkout, 'practice')}
       {showTransfer && warmUps.some(({ decision }) => decision !== 'opened') && <>
-        <p className="pilot-feedback">The warehouse solution was revealed. This fresh problem can provide independent evidence if you pass it unaided.</p>
+        <p className="pilot-feedback">The warehouse solution was revealed in this workout. {seenBefore(postcardTransfer)
+          ? 'Use the postcard problem for practice. You have seen it before.'
+          : 'An unaided pass on the postcard problem can provide independent evidence.'}</p>
         {editor(postcardTransfer, 'transfer')}
       </>}
       {!isBusy && shown?.submission.finishedAt && <section className="pilot-section" aria-labelledby="gym-result">

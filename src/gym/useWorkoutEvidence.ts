@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { readEvidence } from '../learning/evidence';
 import { f01Observations } from './f01-observations';
-import { mergeGymRecord, readGymRecords, recordId, saveGymRecord } from './workout-evidence';
-import type { GymRecord } from './workout-evidence';
+import { GymRecordConflict, readGymRecords, recordId, saveGymRecord } from './workout-evidence';
+import type { GymRecord, WorkoutAttempt } from './workout-evidence';
 
 function load() {
   let records: GymRecord[] = [];
@@ -25,28 +25,48 @@ function load() {
 export function useWorkoutEvidence() {
   const [loaded, setLoaded] = useState(load);
   const [pending, setPending] = useState<GymRecord[]>([]);
-  const unsaved = useRef<GymRecord[]>([]);
+  const [conflict, setConflict] = useState(false);
+  // Both callbacks for an async check can close over the render before it began.
+  const startedAttempts = useRef(new Map<string, WorkoutAttempt>());
+  const unsaved = useRef(new Map<string, { record: GymRecord; expected?: GymRecord }>());
 
-  function write(record: GymRecord) {
+  function persist(record: GymRecord, expected?: GymRecord) {
+    const id = recordId(record);
     let saved = false;
     try {
-      saveGymRecord(record);
-      saved = true;
-      unsaved.current = unsaved.current.filter((item) => recordId(item) !== recordId(record));
+      saveGymRecord(record, expected);
+      unsaved.current.delete(id);
+      if (record.kind === 'attempt' && !record.submission.finishedAt) startedAttempts.current.set(id, record);
       setLoaded(load());
-    } catch {
-      unsaved.current = mergeGymRecord(unsaved.current, record);
+      saved = true;
+    } catch (error) {
+      if (error instanceof GymRecordConflict) {
+        unsaved.current.delete(id);
+        setConflict(true);
+        setLoaded(load());
+      } else {
+        unsaved.current.set(id, { record, expected });
+      }
     }
-    setPending(unsaved.current);
+    setPending([...unsaved.current.values()].map(({ record }) => record));
     return saved;
   }
 
+  function write(record: GymRecord) {
+    const id = recordId(record);
+    const waiting = unsaved.current.get(id);
+    const expected = waiting ? waiting.expected
+      : startedAttempts.current.get(id) ?? loaded.records.find((item) => recordId(item) === id);
+    if (record.kind === 'attempt' && record.submission.finishedAt) startedAttempts.current.delete(id);
+    return persist(record, expected);
+  }
+
   function retry() {
-    for (const record of unsaved.current) write(record);
+    for (const { record, expected } of [...unsaved.current.values()]) persist(record, expected);
     setLoaded(load());
   }
 
-  return { ...loaded, pending, write, retry };
+  return { ...loaded, pending, conflict, dismissConflict: () => setConflict(false), write, retry };
 }
 
 export function useWorkoutExitGuard(blocked: boolean) {

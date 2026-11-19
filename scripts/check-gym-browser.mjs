@@ -83,6 +83,9 @@ try {
   await check(cargo, reversed, /Some public cases failed/);
   await current.waitFor();
   assert.equal(await current.getByRole('heading', { name: 'Conceptual nudge' }).count(), 0);
+  await check(cargo, correct, 'All public cases passed.');
+  await find(/Passed after conceptual coaching/, current).waitFor();
+  await find(/addressed an issue observed/, current).waitFor();
   await check(cargo, grouped, /Some public cases failed/);
   await find(/Does it represent kilograms or a count/, current).waitFor();
 
@@ -175,11 +178,91 @@ try {
   await page.getByLabel('Saved workout').selectOption(history.find(record =>
     record.kind === 'session' && record.completion?.outcome === 'passed').id);
   await find(/final evaluated check passed/).waitFor();
+  // Open a new session after an older nudge, successful transfer and H4 reveal.
+  await page.getByRole('link', { name: 'Back to The Gym', exact: true }).press('Enter');
+  await press('Start workout');
+  await press('Skip warm-up');
+  await source(cargo).waitFor();
+  assert.match(await source(cargo).innerText(), /^# Write the full function/);
+  await button('Show hint', cargo).waitFor();
+  assert.equal(await find(/Three pallets weigh 12 kg/, cargo).count(), 0);
+  assert.equal(await transfer.count(), 0);
+  await page.reload();
+  await button('Show hint', cargo).waitFor();
+  assert.equal(await transfer.count(), 0);
+  await check(cargo, correct, 'All public cases passed.');
+  await find(/Passed without help in this workout.*earlier practice/, current).waitFor();
+  const latest = (await saved()).filter(({ kind }) => kind === 'session').sort((a, b) =>
+    b.startedAt.localeCompare(a.startedAt))[0];
+  const repeat = (await saved()).find(({ sessionId, kind }) => sessionId === latest.id && kind === 'attempt');
+  assert.deepEqual(repeat.submission.hints, []);
+  assert.deepEqual(repeat.nudgeAttemptIds, []);
+  assert.equal(repeat.submission.priorPass, false);
+  assert.equal(repeat.independent, false);
+  assert.equal(repeat.seenInEarlierWorkout, true);
+  assert.equal(await transfer.count(), 0);
+  await check(cargo, reversed, /Some public cases failed/);
+  await find(/What should the cargo weigh when there are no pallets/, current).waitFor();
+  await press('Show hint', cargo);
+  await press('Another hint', cargo);
+  await press('Reveal implementation hint', cargo);
+  await press('Show full solution and explanation', cargo);
+  await source(transfer).waitFor();
+  await find(/You have seen it before/).waitFor();
+  await check(transfer, 'def postcard_total(cartons, loose):\n    return cartons * 6 + loose', 'All public cases passed.');
+  await find(/Passed without help in this workout.*earlier practice/, current).waitFor();
+  const repeatedTransfer = (await saved()).find(({ sessionId, activity }) => sessionId === latest.id && activity === 'transfer');
+  assert.equal(repeatedTransfer.independent, false);
+  assert.equal(repeatedTransfer.seenInEarlierWorkout, true);
   for (const theme of ['light', 'dark']) {
     if (await page.locator('html').getAttribute('data-theme') !== theme) await press('Switch to ' + theme + ' mode');
     assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
   }
-  console.log('Gym warm-up, coaching, transfer, lifecycle, history, save recovery, and responsive checks passed');
+  // Two tabs can evaluate the same unfinished workout. The stale Finish and
+  // rating must preserve the first tab's saved record and both submissions.
+  const context = await browser.newContext();
+  await context.route('https://**', route => route.abort());
+  const winner = await context.newPage();
+  const stale = await context.newPage();
+  const action = (tab, name) => tab.getByRole('button', { name, exact: true }).press('Enter');
+  const records = () => winner.evaluate(() => Object.entries(localStorage)
+    .filter(([key]) => key.startsWith('enntor.gym.v1.')).map(([, value]) => JSON.parse(value)));
+  await winner.goto(hubUrl);
+  await action(winner, 'Start workout');
+  await action(winner, 'Skip warm-up');
+  await stale.goto(workoutUrl);
+  const submit = async (tab, code, verdict) => {
+    const exercise = tab.getByRole('region', { name: /Read a warehouse scale/ });
+    await exercise.getByRole('textbox', { name: /Python code/ }).fill(code);
+    await exercise.getByRole('button', { name: 'Check solution', exact: true }).press('Enter');
+    await exercise.getByText(verdict).waitFor();
+  };
+  await submit(winner, correct, 'All public cases passed.');
+  await submit(stale, reversed, /Some public cases failed/);
+  await action(winner, 'Finish workout');
+  await winner.waitForURL(resultsUrl);
+  await winner.getByText(/final evaluated check passed/).waitFor();
+  const sessionBefore = (await records()).find(({ kind }) => kind === 'session');
+  await action(stale, 'Finish workout');
+  await stale.getByRole('alert').getByText(/Another tab changed this workout/).waitFor();
+  assert.deepEqual((await records()).find(({ kind }) => kind === 'session'), sessionBefore);
+  assert.equal((await records()).filter(({ kind }) => kind === 'attempt').length, 2);
+  await stale.getByRole('link', { name: 'View results', exact: true }).press('Enter');
+  await stale.waitForURL(resultsUrl);
+  await action(stale, 'Dismiss');
+  await winner.getByLabel('Nah, piece of cake! (+1)', { exact: true }).check();
+  // An unchecked choice can be clicked even when the saved selection changes
+  // back during conflict recovery.
+  await stale.getByLabel('O_O (-1)', { exact: true }).click();
+  await stale.getByRole('alert').getByText(/Another tab changed this workout/).waitFor();
+  assert.equal(await stale.getByLabel('Nah, piece of cake! (+1)', { exact: true }).isChecked(), true);
+  const savedRating = (await records()).find(({ kind }) => kind === 'session');
+  assert.deepEqual(savedRating.completion, { ...sessionBefore.completion, sweat: 1 });
+  await stale.getByLabel('O_O (-1)', { exact: true }).check();
+  assert.deepEqual((await records()).find(({ kind }) => kind === 'session').completion,
+    { ...sessionBefore.completion, sweat: -1 });
+  await context.close();
+  console.log('Gym warm-up, coaching, transfer, lifecycle, cross-session history, competing-tab saves, quota recovery, and responsive checks passed');
 } finally {
   await browser.close();
 }

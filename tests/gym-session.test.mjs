@@ -67,3 +67,43 @@ test('Gym examples, worked solution, warm-up, and new transfer match the public 
     await vite.close();
   }
 });
+
+test('Gym rejects stale completion and rating writes and keeps separate attempts', async () => {
+  const vite = await server();
+  const previousStorage = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+  const map = new Map();
+  Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: {
+    getItem: (key) => map.get(key) ?? null, setItem: (key, value) => map.set(key, value),
+    key: (i) => [...map.keys()][i] ?? null, get length() { return map.size; },
+  } });
+  try {
+    const { GymRecordConflict, readGymRecords, saveGymRecord } = await vite.ssrLoadModule('/src/gym/workout-evidence.ts');
+    const { finishWorkout, rateWorkout } = await vite.ssrLoadModule('/src/gym/workout-session.ts');
+    const exercise = { id: 'exercise', version: '1.0.0' };
+    const base = { schemaVersion: 1, origin: 'gym', exercise, conceptId: 'evaluation-order' };
+    const session = { ...base, id: 'shared', kind: 'session', startedAt: 'start' };
+    saveGymRecord(session);
+    const attempt = (id, verdict) => ({ ...base, sessionId: session.id, kind: 'attempt',
+      submission: { id, exercise, source: '# synthetic', startedAt: 'start', finishedAt: 'end',
+        hints: [], grade: { verdict, evidence: [] } },
+    });
+    const passed = attempt('success', 'passed');
+    const failed = attempt('failure', 'failed');
+    saveGymRecord(passed);
+    saveGymRecord(failed);
+    const completion = finishWorkout(session, [passed]);
+    saveGymRecord(completion, session);
+    assert.throws(() => saveGymRecord(finishWorkout(session, [failed]), session), GymRecordConflict);
+    assert.deepEqual(readGymRecords(), [completion, passed, failed]);
+    const firstRating = rateWorkout(completion, 1);
+    saveGymRecord(firstRating, completion);
+    assert.throws(() => saveGymRecord(rateWorkout(completion, -1), completion), GymRecordConflict);
+    assert.deepEqual(readGymRecords(), [firstRating, passed, failed]);
+    saveGymRecord(rateWorkout(firstRating, -1), firstRating);
+    assert.deepEqual(readGymRecords()[0].completion, { ...completion.completion, sweat: -1 });
+  } finally {
+    if (previousStorage) Object.defineProperty(globalThis, 'localStorage', previousStorage);
+    else delete globalThis.localStorage;
+    await vite.close();
+  }
+});
