@@ -1,9 +1,10 @@
+import { coachCheck, correctionsFor } from './check-coaching';
 import { TraceCheckpoint } from './TraceCheckpoint';
 import { traceAttempts, traceHelpFor } from './trace';
 import type { TraceCheck } from './trace';
 import { useEffect, useRef, useState } from 'react';
 import type { LoadedLesson } from '../courses/load-course-pack';
-import type { Exercise, HintLevel } from '../courses/contracts';
+import type { ContentReference, Exercise, HintLevel } from '../courses/contracts';
 import { runExercise } from '../execution/grading';
 import { pythonEngine } from '../execution/python-engine';
 import { TeachingText, TeachingProseText } from './TeachingText';
@@ -39,7 +40,10 @@ function LessonSession({ evidence, item }: { evidence: ReturnType<typeof useEvid
   const { session, history, update, save, error, startAgain } = evidence;
   const state = learningState(session, modification.id, make.id, transfer.id, build.id, !legacy, sequence);
   const earlierSessions = history.filter(({ id }) => id !== session.id);
-  const seenExercise = (exercise: Exercise) => hasSeenExercise(earlierSessions, exercise);
+  const seenExercise = (exercise: Exercise) => {
+    const equivalent = sequence.equivalentExerciseVersions?.[exercise.id] ?? [];
+    return [exercise.version, ...equivalent].some(version => hasSeenExercise(earlierSessions, { id: exercise.id, version }));
+  };
   const repeatTransfer = !legacy && seenExercise(transfer);
   const [answer, setAnswer] = useState(session.prediction?.answer ?? '');
   const showTransfer = !!session.transferOpenedAt;
@@ -115,29 +119,37 @@ function LessonSession({ evidence, item }: { evidence: ReturnType<typeof useEvid
     const base = `enntor.draft.${exercise.id}.${draftVersion}`;
     const key = session.legacyDrafts && legacyDraft ? base : `${base}.${session.id}`;
     const visibleHints = session.hints.filter((hint) => hint.exercise.id === exercise.id && hint.exercise.version === exercise.version).map(({ level }) => level);
-    const previous = earlierSessions;
-    const priorHints = previous.flatMap((item) => item.hints).filter((hint) => hint.exercise.id === exercise.id &&
-      (legacy || hint.exercise.version === exercise.version))
+    const sameTask = (ref: ContentReference) => ref.id === exercise.id &&
+      (legacy || ref.version === exercise.version || sequence.equivalentExerciseVersions?.[exercise.id]?.includes(ref.version));
+    const priorHints = earlierSessions.flatMap((item) => item.hints).filter((hint) => sameTask(hint.exercise))
       .map(({ level }) => level);
-    const priorPass = previous.some((item) => item.submissions.some((attempt) =>
-      attempt.exercise.id === exercise.id && (legacy || attempt.exercise.version === exercise.version) && attempt.grade?.verdict === 'passed'));
+    const priorPass = earlierSessions.some((item) => item.submissions.some((attempt) =>
+      sameTask(attempt.exercise) && attempt.grade?.verdict === 'passed'));
     const seenBefore = !legacy && seenExercise(exercise);
-    return <ExerciseEditor key={exercise.id} {...{ stage, exercise, draftKey: key, priorPass }}
-      hints={visibleHints} feedback={stage === 'Modify' ? predictionCoaching.modifyFeedback : undefined}
+    const previous = session.submissions.filter(attempt => sameTask(attempt.exercise));
+    const priorCoaching = earlierSessions.some(item => item.submissions.some(attempt => sameTask(attempt.exercise) && attempt.coaching));
+    const olderDraft = earlierSessions.find(item => !item.completion && sequence.draftsFromLesson === item.lesson.version);
+    const earlierDraftKey = olderDraft ? `enntor.draft.${exercise.id}.${sequence.equivalentExerciseVersions?.[exercise.id]?.[0] ?? exercise.version}.${olderDraft.id}` : undefined;
+    return <ExerciseEditor key={exercise.id} {...{ stage, exercise, draftKey: key, earlierDraftKey, priorPass }}
+      hints={visibleHints} coach={attempt => coachCheck(exercise, attempt, previous)}
       onBusy={(value) => setBusy((old) => ({ ...old, [exercise.id]: value }))}
       onDraftFailure={(value) => setDraftFailures((old) => ({ ...old, [exercise.id]: value }))}
       onHint={(level: HintLevel) => update((old) => ({ ...old, hints: old.hints.some((hint) => hint.exercise.id === exercise.id &&
           hint.exercise.version === exercise.version && hint.level === level) ? old.hints : [...old.hints,
         { exercise: { id: exercise.id, version: exercise.version }, level, at: now() }] }))}
-      onAttempt={(attempt) => record({ ...attempt, seenBefore: seenBefore || undefined, priorSolutionHelp: !legacy && hasSolutionHelp(priorHints) || undefined,
-        hints: legacy ? [...new Set([...priorHints, ...attempt.hints])] : attempt.hints })} />;
+      onAttempt={(attempt) => {
+        const corrects = attempt.finishedAt ? correctionsFor(attempt, previous) : [];
+        record({ ...attempt, coachedBefore: priorCoaching || previous.some(item => !!item.coaching) || undefined,
+        corrects: corrects.length ? corrects : undefined, seenBefore: seenBefore || undefined, priorSolutionHelp: !legacy && hasSolutionHelp(priorHints) || undefined,
+        hints: legacy ? [...new Set([...priorHints, ...attempt.hints])] : attempt.hints });
+      }} />;
   }
 
   const stage = session.completion ? 7 : state.canFinish ? 6 : state.built ? 5 : state.modified ? 4 : state.investigated && (!sequence.trace || state.trace) ? 3
     : state.prediction ? 2 : session.learnedAt ? 1 : 0;
   const output = state.prediction?.stdout.trim();
   const lastRun = session.prediction?.runs.at(-1);
-  const assistance = state.made.some((item) => item.hints.length > 0 || item.priorPass || item.seenBefore || item.priorSolutionHelp);
+  const assistance = state.made.some((item) => item.hints.length > 0 || item.priorPass || item.seenBefore || item.priorSolutionHelp || item.coachedBefore);
 
   const blocked = predicting || !!busyCount || draftFailed;
   const storageAlert = error && <div className="pilot-feedback" role="alert">
@@ -192,6 +204,10 @@ function LessonSession({ evidence, item }: { evidence: ReturnType<typeof useEvid
             </div>
           </form>
           {lastRun && <Console runs={[lastRun]} printedLabel="Printed result" />}
+          {output !== undefined && session.prediction && <p role="status" className={Number(output) === Number(session.prediction.answer) ? 'pilot-success' : undefined}>
+            {Number(output) === Number(session.prediction.answer) ? "That's right! Your prediction matches the printed result."
+              : `Your prediction of ${session.prediction.answer} differs from the printed result.`}
+          </p>}
         </section>}
         {output !== undefined && session.prediction && <PredictionReview answer={session.prediction.answer} output={output} coaching={predictionCoaching}
           warning={lesson.teachingBlocks.find(({ type }) => type === 'warning')}
@@ -206,7 +222,6 @@ function LessonSession({ evidence, item }: { evidence: ReturnType<typeof useEvid
           <h2 id="build-plan-heading" className="pilot-stage-heading">Build</h2>
           <h3 className="pilot-exercise-heading">Plan the function</h3>
           <p><TeachingProseText content={buildPlan.prompt} /></p>
-          <p>Inputs go in the declaration. Decide what the output represents before writing the body.</p>
           <fieldset disabled={session.buildPlan?.correct}>
             <legend>Choose the intended result</legend>
             {buildPlan.options.map(({ id, text }) => <label key={id}>

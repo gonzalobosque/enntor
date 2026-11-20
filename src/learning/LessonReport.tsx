@@ -18,7 +18,8 @@ export function LessonReport({ item, session, reports, onReport, storageAlert, o
   const checks = session.traces?.filter(attempt => completion?.traceIds?.includes(attempt.id)) ?? [];
   const assistedMake = make?.exercise.id === transfer.id && session.submissions.find((attempt) =>
     attempt.exercise.id === mainExercise.id && attempt.grade?.verdict === 'passed' &&
-    (attempt.hints.length > 0 || attempt.priorSolutionHelp));
+    (attempt.hints.length > 0 || attempt.priorSolutionHelp || attempt.coachedBefore));
+  const coached = session.submissions.filter(attempt => attempt.coaching);
   const failed = session.submissions.filter(({ grade }) => grade?.verdict === 'failed');
   const buildMistakes = session.buildChecks?.filter(({ correct }) => !correct) ?? [];
   const followUpFailures = session.followUps.filter(({ correct }) => !correct);
@@ -44,7 +45,7 @@ export function LessonReport({ item, session, reports, onReport, storageAlert, o
           {session.followUps.length > 0 && <li>Follow-up passed after {session.followUps.length} {session.followUps.length === 1 ? 'check' : 'checks'}.</li>}
           <li>Modify passed.</li>
           <li>{completion.buildId ? 'Build passed.' : 'Build was introduced after this session.'}</li>
-          {assistedMake && <li>Original Make passed with help{assistedMake.hints.length ? ` (${assistedMake.hints.join(', ')})` : ''}.</li>}
+          {assistedMake && <li>{assistedMake.coachedBefore && !assistedMake.hints.length ? 'Original Make passed after coaching' : 'Original Make passed with help'}{assistedMake.hints.length ? ` (${assistedMake.hints.join(', ')})` : ''}.</li>}
           <li>{transferPassed ? repeat ? 'Previously attempted transfer passed.' : 'Fresh Make problem passed.' : 'Make passed.'}</li>
           {checks.map(attempt => {
             const first = session.traces?.find(item => item.check.id === attempt.check.id && item.check.version === attempt.check.version);
@@ -60,12 +61,13 @@ export function LessonReport({ item, session, reports, onReport, storageAlert, o
           ? transferPassed ? 'Independent coding evidence on the transfer problem.' : 'Independent coding evidence on this problem.'
           : transferPassed ? 'Independent skill demonstrated on the transfer problem.' : 'Independent skill demonstrated on this problem.'
           : repeat ? 'Finished as practice. No new independent coding evidence.'
-            : make?.hints.length ? 'Make passed with help.' : 'Make passed on a previously seen problem.'}</strong></p>
+            : make?.coachedBefore ? 'Coding checks passed after coaching. No new independent coding evidence.'
+              : make?.hints.length ? 'Make passed with help.' : 'Make passed on a previously seen problem.'}</strong></p>
         {sequence.trace && <p>{checks.length ? 'Public code checks measure returned results. Trace checks record reasoning about the names and values separately.'
           : 'This earlier edition did not record trace evidence.'}</p>}
         {make?.hints.length ? <p>Recorded help: {make.hints.join(', ')}. {hasSolutionHelp(make.hints) ? 'Includes implementation help.' : 'Conceptual help.'}</p> : null}
       </section>
-      {(prediction?.hypothesis || failed.length > 0 || followUpFailures.length > 0 || buildMistakes.length > 0 ||
+      {(prediction?.hypothesis || coached.length || failed.length > 0 || followUpFailures.length > 0 || buildMistakes.length > 0 ||
         (actual !== undefined && Number(prediction?.answer) !== Number(actual))) && (
         <section className="pilot-section" aria-labelledby="mistakes-heading">
           <h2 id="mistakes-heading">What the work showed</h2>
@@ -73,6 +75,12 @@ export function LessonReport({ item, session, reports, onReport, storageAlert, o
           {reasoning && <p>{reasoning}</p>}
           {!!buildMistakes.length && <p>{currentNarrative && sequence.buildPlan.report} Incorrect Build choices: {buildMistakes.length}.</p>}
           {followUpFailures.map(({ id, answer, expected }) => <p key={id}>Follow-up answer <code>{answer}</code>. Expected <code>{expected}</code>.</p>)}
+          {coached.map(attempt => <details key={'coaching-' + attempt.id}>
+            <summary>{attempt.exercise.id} · check feedback</summary>
+            <p>{attempt.coaching?.fact} {attempt.coaching?.question}</p>
+            {session.submissions.some(item => item.corrects?.includes(attempt.id)) &&
+              <p>A later submission passed the case discussed here.</p>}
+          </details>)}
           {failed.map((attempt) => <details key={attempt.id}>
             <summary>{attempt.exercise.id} · failed public checks</summary>
             {attempt.grade?.evidence.filter(({ passed }) => !passed).map((test) => <p key={test.id}>{test.message}</p>)}

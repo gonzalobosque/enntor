@@ -7,8 +7,8 @@ const batterySolution = 'def battery_after(start, used, restored):\n    saved = 
 export const f0102Exercises = [
   prediction(id, concept, 'stock = 12\nbefore = stock\nstock = stock - 5\nstock += 2\nprint(before - stock)', 3),
   task(id, concept, {
-    key: 'modify', kind: 'modify', title: 'Keep the starting reading', entryPoint: 'starting_reading',
-    prompt: 'The logger must return the reading from before a correction. Change the final line of starting_reading(reading, correction) so it returns that recorded integer. Both inputs are signed integers. A reading of 6 and correction of −2 must return 6.',
+    key: 'modify', revision: '1.1.0', kind: 'modify', title: 'Keep the starting reading', entryPoint: 'starting_reading',
+    prompt: 'A logger applies a correction but must report the reading it had before that correction. Update starting_reading(reading, correction). The first input is the original reading and the second is the signed adjustment. Both are integers. Return the original reading as an integer. With a reading of 6 and a correction of −2, the live reading becomes 4 and the function returns 6.',
     starter: 'def starting_reading(reading, correction):\n    recorded = reading\n    reading += correction\n    return reading',
     hints: [{ level: 'H0', text: ['Trace a nonzero correction. Which name changes its binding and which name keeps its starting value?'] }],
     cases: [['decrease', [6, -2], 6], ['increase', [3, 5], 3], ['none', [10, 0], 10],
@@ -23,19 +23,22 @@ export const f0102Exercises = [
       ['zero', [0, -5], -10], ['negative', [-5, 2], -1], ['cross', [-2, 9], 16]],
   }),
   task(id, concept, {
-    key: 'make', kind: 'write', title: 'Reconcile two battery readings', entryPoint: 'battery_after',
-    prompt: ['A battery meter logs its charge immediately after a test consumes some power and once again after a top-up. The report needs the sum of those two readings. Define ',
-      call('battery_after()'), ' with integer parameters ', symbol('start'), ' (initial units), ', symbol('used'),
-      ' (units consumed) and ', symbol('restored'), ' (units added), in that order. All are nonnegative and consumption never exceeds the starting charge. Return one integer. A battery starting at 10, using 3, and receiving 2 has readings 7 and 9, so return 16.'],
+    key: 'make', revision: '1.1.0', kind: 'write', title: 'Reconcile two battery readings', entryPoint: 'battery_after',
+    prompt: ['Write ', call('battery_after()'), ' with three integer inputs, in this order:\n', symbol('start'),
+      ' is the initial charge. ', symbol('used'), ' is how much the test consumes. ', symbol('restored'),
+      ' is how much the top-up adds. All three inputs are nonnegative, and the test never consumes more than the initial charge.\n\n',
+      'The initial charge is not a recorded reading. Reading 1 is taken after the test. Reading 2 is taken after the top-up. Return the sum of those two readings as an integer.\n\n',
+      'Example: start at 5 → test uses 2 → record 3 → top-up adds 1 → record 4. Return 7.'],
+    coaching: { unusedCalculationQuestion: 'Which of the two recorded measurements is missing from the return value?' },
     hints: ladder('Mark the two moments at which a reading is recorded. Does the top-up affect both?',
       'Keep one name for the first recorded charge and another for the charge that changes.',
       'The test leaves 7 units. The snapshot stays at 7 when the live value is rebound to 9. The return uses both readings, so a top-up of zero would instead make the sum twice the first reading.', batterySolution),
-    cases: [['ordinary', [10, 3, 2], 16], ['empty-after-test', [5, 5, 2], 2], ['no-top-up', [8, 3, 0], 10],
+    cases: [['ordinary', [10, 3, 2], 16], ['timeline', [5, 2, 1], 7], ['empty-after-test', [5, 5, 2], 2], ['no-top-up', [8, 3, 0], 10],
       ['no-use', [8, 0, 3], 19], ['all-zero', [0, 0, 0], 0], ['empty-start', [0, 0, 4], 4]],
   }),
   task(id, concept, {
-    key: 'make-transfer', kind: 'transfer', title: 'Score a calibration run', entryPoint: 'calibration_score',
-    prompt: 'A calibration starts at an integer reading. A technician adjusts it by a signed offset, records a checkpoint, then adjusts it by a second signed offset. The score is twice the checkpoint reading minus the final reading. Define calibration_score(initial, first_offset, second_offset), with three signed integer parameters, and return the integer score. For (7, −2, 3) the checkpoint is 5 and the final reading is 8, so return 2.',
+    key: 'make-transfer', revision: '1.1.0', kind: 'transfer', title: 'Score a calibration run', entryPoint: 'calibration_score',
+    prompt: 'Define calibration_score(initial, first_offset, second_offset). All three inputs are signed integers. initial is the starting reading.\n\nApply first_offset to reach the checkpoint. Apply second_offset to the checkpoint reading to reach the final reading. Return the integer score: twice the checkpoint reading minus the final reading.\n\nExample: (7, −2, 3) starts at 7, reaches checkpoint 5, then finishes at 8. The score is 2.',
     hints: [],
     cases: [['ordinary', [7, -2, 3], 2], ['equal', [3, 2, 0], 5], ['negative', [-4, 1, 5], -8],
       ['zero-checkpoint', [6, -6, -3], 3], ['all-zero', [0, 0, 0], 0], ['cross', [-3, 6, -2], 5]],
@@ -53,9 +56,11 @@ export const f0102Lesson = foundationLesson({
   ],
   mentorTips: [{ id: id + '.tip', text: 'Draw a row after each assignment. Save which names still point to the earlier value.', sourceRefs: ['P01'] }],
 }, f0102Exercises);
-f0102Lesson.version = '1.1.0';
+f0102Lesson.version = '1.2.0';
 
 export const f0102Sequence: LessonSequence = {
+  draftsFromLesson: '1.1.0',
+  equivalentExerciseVersions: { [id + '.modify']: ['1.0.0'], [id + '.make']: ['1.0.0'], [id + '.make-transfer']: ['1.0.0'] },
   trace: {
     id: id + '.state-trace', version: '1.0.0', title: 'Trace both bindings',
     prompt: 'Record the value each name refers to just after each assignment. Write unbound if a name has not been assigned yet.',
@@ -99,8 +104,9 @@ export const f0102Sequence: LessonSequence = {
       explanation: 'The live reading is 9 and the snapshot is 4, so the difference is 5.' },
   },
   buildPlan: {
-    prompt: 'A reading moves from 8 to 5 after an update. Which reading does the scoring rule count twice?',
-    options: [{ id: 'change', text: 'The updated reading, 5.' }, { id: 'reverse', text: 'The earlier checkpoint, 8.' }],
+    prompt: 'The checkpoint stores the reading before the update. The score is twice the updated reading minus the checkpoint reading. The checkpoint is 8 and the update changes the reading by −3, to 5. Which value is doubled, and what score does that give?',
+    example: { input: [8, -3], expected: 2 },
+    options: [{ id: 'change', text: 'Double 5. The score is 2.' }, { id: 'reverse', text: 'Double 8. The score is 11.' }],
     correct: 'change', syntax: 'Keep the saved value distinct from the live name. Use the supplied bindings to calculate the score.',
     retry: 'The checkpoint is the earlier value. Which value does the rule double?',
     report: 'In Build, at least one plan doubled the earlier checkpoint instead of the updated reading.',

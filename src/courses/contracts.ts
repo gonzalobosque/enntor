@@ -75,6 +75,7 @@ export interface Exercise {
   conceptIds: ContentId[];
   difficulty: number;
   starterCode?: string;
+  coaching?: { unusedCalculationQuestion?: string };
   hints: { level: HintLevel; text: TeachingProse; solutionCode?: string }[];
   execution?: {
     engineId: string;

@@ -20,15 +20,15 @@ export function prediction(lessonId: string, concept: string, source: string, ou
   };
 }
 
-type Task = Pick<Exercise, 'title' | 'kind' | 'prompt' | 'hints'> & {
-  key: string; entryPoint: string; starter?: string;
+type Task = Pick<Exercise, 'title' | 'kind' | 'prompt' | 'hints' | 'coaching'> & {
+  key: string; entryPoint: string; starter?: string; revision?: string;
   cases: [id: string, input: number[], expected: number][];
 };
 
 export function task(lessonId: string, concept: string, config: Task): Exercise {
-  const { key, entryPoint, starter, cases, ...content } = config;
+  const { key, entryPoint, starter, cases, revision = version, ...content } = config;
   return {
-    ...content, id: lessonId + '.' + key, version, lessonId, conceptIds: [concept], difficulty: 1,
+    ...content, id: lessonId + '.' + key, version: revision, lessonId, conceptIds: [concept], difficulty: 1,
     starterCode: starter ?? '# Write the full function here.\n', execution: { ...execution, entryPoint },
     grading: { graderId: 'return-value', graderVersion: version, rubric: 'Return the specified integer.',
       publicCases: cases.map(([id, input, expected]) => ({ id, input, expected })), configuration: {} },

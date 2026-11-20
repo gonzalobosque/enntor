@@ -1,3 +1,4 @@
+import { coachCheck, correctionsFor } from '../learning/check-coaching';
 import { useRef, useState } from 'react';
 import { gymResultsPath, gymWorkoutPath } from '../app/areas';
 import type { Exercise } from '../courses/contracts';
@@ -93,6 +94,7 @@ export function Gym({ view }: { view: 'home' | 'workout' | 'results' }) {
     const matching = (record: { exercise: { id: string; version: string } }) =>
       record.exercise.id === exercise.id && record.exercise.version === exercise.version;
     const previous = attempts.filter(matching);
+    const previousSubmissions = previous.map(item => item.submission);
     const levels = [...new Set(hints.filter(matching).map(({ level }) => level))];
     const seenInEarlierWorkout = seenBefore(exercise);
     const previouslyNudged = previous.filter(({ coaching }) => coaching?.exposure).map(({ submission }) => submission.id);
@@ -103,20 +105,23 @@ export function Gym({ view }: { view: 'home' | 'workout' | 'results' }) {
 
     return <ExerciseEditor key={key} stage={activity === 'warm-up' ? 'Modify' : 'Practice'} exercise={exercise}
       draftKey={key} hints={levels} priorPass={priorPass}
+      coach={activity === 'warm-up' ? submission => coachCheck(exercise, submission, previousSubmissions) : undefined}
       onBusy={(value) => setBusy((old) => ({ ...old, [slot]: value }))}
       onDraftFailure={(value) => setDraftFailures((old) => ({ ...old, [slot]: value }))}
       onEdit={() => { if (activity !== 'warm-up') setCurrentCheck(null); }}
       onHint={(level) => data.write({ ...exerciseRecord, kind: 'hint', id: crypto.randomUUID(), level, at: now() })}
       onAttempt={(submission: Submission) => {
         if (activity !== 'warm-up') setCurrentCheck(submission.id);
-        const diagnostic = diagnoseCargo(exercise, submission, previous.map((attempt) => attempt.submission));
+        const diagnostic = diagnoseCargo(exercise, submission, previousSubmissions);
         const alreadyShown = previous.some((attempt) => attempt.coaching?.exposure?.id === diagnostic?.nudge.id);
         const checkedCases = new Set(submission.grade?.evidence.filter(({ passed }) => passed).map(({ id }) => id));
         const correctedBefore = new Set(previous.flatMap((attempt) => attempt.correctedAttemptIds ?? []));
         const corrected = previous.filter(({ coaching, submission: earlier }) => coaching &&
           !correctedBefore.has(earlier.id) && (('exception' in coaching.observation && submission.grade?.verdict && submission.grade.verdict !== 'ungraded') ||
             (!!coaching.observation.caseId && checkedCases.has(coaching.observation.caseId))));
-        data.write({ ...exerciseRecord, kind: 'attempt', activity, submission, warmUpRecordId: round ?? warmUp?.id,
+        const warmUpCorrections = activity === 'warm-up' ? correctionsFor(submission, previousSubmissions) : [];
+        data.write({ ...exerciseRecord, kind: 'attempt', activity,
+          submission: warmUpCorrections.length ? { ...submission, corrects: warmUpCorrections } : submission, warmUpRecordId: round ?? warmUp?.id,
           recommendation: { reason: recommendation.reason, evidenceIds: recommendation.evidence.map(({ id }) => id) },
           nudgeAttemptIds: previouslyNudged, correctedAttemptIds: corrected.map(({ submission: earlier }) => earlier.id),
           coaching: diagnostic && { observation: diagnostic.observation, hypothesis: diagnostic.hypothesis,

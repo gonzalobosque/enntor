@@ -18,7 +18,6 @@ export function PredictionReview({ answer, output, warning, coaching, reasoning,
   return (
     <section className="pilot-section" aria-labelledby="investigate-heading">
       <h2 id="investigate-heading" className="pilot-stage-heading">Investigate</h2>
-      <p className={matched ? 'pilot-success' : undefined}>{matched ? <><strong>That's right!</strong> Python printed <code>{output}</code>, matching your prediction.</> : `You predicted ${answer}. Python printed ${output}.`}</p>
       {hypothesis ? (
         <>
           <p><TeachingProseText content={hypothesis.possibleReasoning} /></p>

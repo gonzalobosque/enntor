@@ -1,6 +1,6 @@
 import { pythonLanguage } from '@codemirror/lang-python';
-import type { ResultObservation, WorkoutDiagnostic } from './diagnostic';
-import { diagnoseExecution } from './diagnostic';
+import type { WorkoutDiagnostic } from '../execution/diagnostics';
+import { diagnoseExecution, failedReturnCases } from '../execution/diagnostics';
 import { cargoWorkout } from './f01-workout';
 
 type PythonNode = ReturnType<typeof pythonLanguage.parser.parse>['topNode'];
@@ -69,17 +69,7 @@ export const diagnoseCargo: WorkoutDiagnostic = (exercise, submission, previous 
   const execution = diagnoseExecution(exercise, submission);
   if (execution) return execution;
   if (submission.grade?.verdict !== 'failed') return undefined;
-  const observations = exercise.grading.publicCases.flatMap((test, index): ResultObservation[] => {
-    const run = submission.runs?.[index];
-    if (run?.status !== 'completed' || !submission.grade?.evidence.some(({ id, passed }) => id === test.id && !passed) ||
-        typeof test.expected !== 'number' || !Array.isArray(test.input) ||
-        !test.input.every((value): value is number => typeof value === 'number')) return [];
-    const actual = run.value;
-    return [{ kind: actual === null ? 'missing-return' : typeof actual === 'number' && actual < 0 && test.expected > 0
-      ? 'negative-for-positive' : 'unexpected-result',
-      caseId: test.id, inputs: test.input, actual: typeof actual === 'number' ? actual : JSON.stringify(actual) ?? 'no value',
-      expected: test.expected }];
-  });
+  const observations = failedReturnCases(exercise, submission);
   const missing = observations.find((item) => item.kind === 'missing-return');
   if (missing) return {
     observation: missing,

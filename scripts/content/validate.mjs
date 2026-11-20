@@ -93,6 +93,12 @@ export async function validateContent(lessonIds = []) {
         const execute = (source, input) => run(source,
           `__import__('json').dumps(${entryPoint}(*__import__('json').loads(_args)), allow_nan=False)`,
           { _args: JSON.stringify(input) });
+        if (!pilot && role === 'build') {
+          const example = sequence.buildPlan.example;
+          assert(example && cases.some(test => JSON.stringify(test.input) === JSON.stringify(example.input) &&
+            test.expected === example.expected), exercise.id + ' planning example matches a public case');
+          assert.equal(execute(reference, example.input), JSON.stringify(example.expected), exercise.id + ' planning example result');
+        }
         const starterEmpty = role === 'make' || role === 'transfer';
         if (starterEmpty) {
           assert.match(exercise.starterCode, /^(?:\s*#[^\n]*\n?)*\s*$/, exercise.id + ' blank starter');

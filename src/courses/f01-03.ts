@@ -23,10 +23,11 @@ export const f0103Exercises = [
       ['zero-other', [0, 1], 0], ['negative-original', [-4, 0], 1], ['negative-other', [-4, 1], 0]],
   }),
   task(id, concept, {
-    key: 'make', kind: 'write', title: 'Classify a rack slot', entryPoint: 'rack_badge',
-    prompt: ['A rack records a primary sample as a one-item list containing ', symbol('primary'), '. Slots 0 and 1 refer to that same list. Slot 2 refers to a separately created one-item list containing ',
-      symbol('spare'), '. Define ', call('rack_badge()'), ' with signed integer readings primary and spare, followed by integer ',
-      symbol('slot'), ' (0, 1, or 2). Return 2 for the primary object, 1 for a separate object with equal contents, and 0 otherwise. For (9, 9, 2), return 1. The grader checks the badge values. The trace activity checks your reasoning about references.'],
+    key: 'make', revision: '1.2.0', kind: 'write', title: 'Classify a rack slot', entryPoint: 'rack_badge',
+    prompt: ['Define ', call('rack_badge()'), '. The first two inputs, ', symbol('primary'), ' and ', symbol('spare'),
+      ', are signed integer readings. The third input, ', symbol('slot'), ', is 0, 1 or 2.\n\n',
+      'Slots 0 and 1 refer to the same list, containing the primary reading. Slot 2 refers to a separate list containing the spare reading.\n\n',
+      'Return 2 if the selected slot holds the primary list, 1 if it holds a separate list with equal contents, or 0 if the contents differ. Return an integer. Example: (9, 9, 2) returns 1.'],
     hints: ladder('Draw two list objects and three arrows from the slots. Which arrows lead to the same object?',
       'For these lists, sharing an object guarantees equal contents. Can two separate checks distinguish the three cases?',
       'The two comparison results can contribute one point each. Slot 2 in the example has equal contents but a different object, so only one check contributes.', rackSolution),
@@ -34,16 +35,13 @@ export const f0103Exercises = [
       ['different', [9, 8, 2], 0], ['zero-distinct', [0, 0, 2], 1], ['negative-distinct', [-3, 3, 2], 0]],
   }),
   task(id, concept, {
-    key: 'make-transfer', kind: 'transfer', title: 'Count duplicates across two handoffs', entryPoint: 'duplicate_flag',
-    prompt: 'An archive keeps a one-item list containing level. The desk first replaces its reading with a new one-item list containing first. At the next update it either reconnects to the archived list (restore is 1) or receives another new one-item list containing second (restore is 0). Define duplicate_flag(level, first, second, restore). The first three inputs are signed integers and restore is 0 or 1. At each of the two updates, count one duplicate only if the desk and archive hold equal contents in separate objects. Return the total count as an integer. For (5, 5, 5, 0), return 2. For (5, 5, 5, 1), return 1 because the desk reconnects at the second update.',
+    key: 'make-transfer', revision: '1.2.0', kind: 'transfer', title: 'Count duplicates across two handoffs', entryPoint: 'duplicate_flag',
+    prompt: 'Define duplicate_flag(level, first, second, restore). The first three inputs are signed integers. restore is 0 or 1. The archive keeps one list containing level throughout.\n\nUpdate 1: the desk receives a new list containing first.\nUpdate 2: if restore is 1, the desk receives the archive list itself. If restore is 0, it receives a new list containing second.\n\nAfter each update, count one duplicate if the desk list is separate from the archive list and their contents match. Return the total as an integer. (5, 5, 5, 0) returns 2. (5, 5, 5, 1) returns 1 because the second update shares the archive object.',
     hints: [],
     cases: [['two-duplicates', [5, 5, 5, 0], 2], ['restored', [5, 5, 5, 1], 1], ['first-only', [5, 5, 2, 0], 1],
       ['second-only', [5, 2, 5, 0], 1], ['no-duplicates', [5, 2, 4, 0], 0], ['restored-after-change', [0, -1, 0, 1], 0]],
   }),
 ];
-
-f0103Exercises[3].version = '1.1.0';
-f0103Exercises[4].version = '1.1.0';
 
 export const f0103Lesson = foundationLesson({
   id, title: 'Identity and equality', prerequisites: ['F01.02'],
@@ -59,9 +57,11 @@ export const f0103Lesson = foundationLesson({
   ],
   mentorTips: [{ id: id + '.tip', text: 'Draw labels with arrows to objects. Compare the arrows for identity and the entries for equality.', sourceRefs: ['P01'] }],
 }, f0103Exercises);
-f0103Lesson.version = '1.1.0';
+f0103Lesson.version = '1.2.0';
 
 export const f0103Sequence: LessonSequence = {
+  draftsFromLesson: '1.1.0',
+  equivalentExerciseVersions: { [id + '.make']: ['1.1.0', '1.0.0'], [id + '.make-transfer']: ['1.1.0'] },
   trace: {
     id: id + '.reference-trace', version: '1.0.0', title: 'Trace references and contents',
     prompt: 'Call the list created on line 1 A and the list created on line 3 B. For each row, name the object second refers to. Then answer yes or no for second is first and second == first.',
@@ -118,7 +118,8 @@ export const f0103Sequence: LessonSequence = {
       explanation: 'The second slot holds the separate list. Identical entries do not make it the same object.' },
   },
   buildPlan: {
-    prompt: 'The second slot contains a newly created list with the same reading. What does the identity check need to report?',
+    prompt: 'Slot 0 holds the original list. Slot 1 holds a separate list with the same reading. Return 1 only when the selected slot is the original object, and 0 otherwise. For reading 6 and slot 1, which result follows?',
+    example: { input: [6, 1], expected: 0 },
     options: [{ id: 'other', text: '0, because the slot contains a distinct list.' }, { id: 'same', text: '1, because the readings are equal.' }],
     correct: 'other', syntax: 'Start with the supplied selected and original names. The caller needs an integer result, so convert the comparison.',
     retry: 'Equal entries answer the contents question. Which object does the slot hold?',

@@ -8,7 +8,7 @@ The Climb offers the first three F01 lessons, from **Expressions and evaluation 
 
 The CodeMirror Python editor uses syntax-aware indentation. Tab indents four spaces, Shift+Tab outdents, and Escape followed by Tab moves focus out. Use the standard undo and redo shortcuts for your platform.
 
-**Run** executes the editor as a script. **Check solution** calls the function with public cases and reports the verdict separately from console output. **Stop** terminates the active worker. Reset and Try again from scratch save edited code under Previous drafts before restoring starter code.
+**Check solution** runs the graded editor with public cases and reports the verdict separately from console output. Predictions retain their own execution action. **Stop** terminates the active worker. Reset and Try again from scratch save edited code under Previous drafts before restoring starter code.
 
 A passing Make result without hints or a prior pass on that exercise demonstrates independent skill on that problem when there is no earlier exposure to the same exercise edition. Conceptual hints count as assistance. An implementation hint requires a separate Make task before Finish. The completion summary distinguishes these states.
 

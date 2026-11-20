@@ -17,7 +17,7 @@ try {
   const link = name => page.getByRole('link', { name });
   const learnerRecords = () => page.evaluate(() => Object.entries(localStorage)
     .filter(([key]) => key.startsWith('enntor.evidence.v1.')).map(([, json]) => JSON.parse(json)));
-  const recordFor = async id => (await learnerRecords()).find(record => record.lesson.id === id);
+  const recordFor = async id => (await learnerRecords()).filter(record => record.lesson.id === id).sort((a, b) => b.startedAt.localeCompare(a.startedAt))[0];
 
   async function capture(name, target) {
     if (!screenshots) return;
@@ -73,6 +73,12 @@ try {
     completion: { at: '2026-01-01T09:15:00Z', sweat: null, modifyId: 'm1', makeId: 'm2', independent: true },
   };
   await page.evaluate(session => localStorage.setItem('enntor.evidence.v1.' + session.id, JSON.stringify(session)), pilot);
+  const earlierEdition = { ...pilot, id: 'synthetic-earlier-edition', lesson: { id: 'F01.02', version: '1.1.0' },
+    pack: { id: 'python-ai-pilot', version: '1.5.0' }, legacyDrafts: false, completion: undefined };
+  await page.evaluate(item => {
+    localStorage.setItem('enntor.evidence.v1.' + item.id, JSON.stringify(item));
+    localStorage.setItem('enntor.draft.F01.02.modify.1.0.0.' + item.id, '# Earlier edition draft');
+  }, earlierEdition);
   await page.goto(at());
   await link(/Open F01.02/).waitFor();
   await page.getByText(/Locked · finish F01.02 first/).waitFor();
@@ -87,6 +93,10 @@ try {
   assert.equal(await page.getByRole('link', { name: 'The Climb', exact: true }).getAttribute('aria-current'), 'location');
 
   await predict('0', '3');
+  const predictionVerdict = section('Predict').locator('.pilot-console + [role="status"]');
+  await predictionVerdict.waitFor();
+  assert.match(await predictionVerdict.innerText(), /Your prediction of 0 differs from the printed result/);
+  assert.equal(await section('Investigate').getByText(/differs from the printed result/).count(), 0);
   await page.getByLabel('Yes, I changed both names').check();
   await capture('reassignment-investigate', section('Investigate'));
   await followUp('5');
@@ -112,37 +122,58 @@ try {
   await capture('reassignment-worked-trace', stateTrace);
   await checkTrace('Trace both bindings', ['12', 'unbound', '12', '12', '7', '12', '9', '12']);
   const modify = section(/^Modify/);
+  assert.match(await modify.getByRole('textbox', { name: /Python code/ }).innerText(), /Earlier edition draft/);
+  const requirement = await modify.locator('.exercise-prompt').innerText();
+  assert.match(requirement, /live reading becomes 4 and the function returns 6/);
+  assert.doesNotMatch(requirement, /recorded|final line/);
   const draft = 'def starting_reading(reading, correction):\n    recorded = reading\n    reading += correction\n    return recorded';
   await modify.getByRole('textbox', { name: /Python code/ }).fill(draft);
   await press('Save for later');
   await link(/Resume F01.02/).press('Enter');
   assert.equal(await modify.getByRole('textbox', { name: /Python code/ }).innerText(), draft);
   await grade(modify, draft);
-  await page.getByLabel('The earlier checkpoint, 8.').check();
+  const plan = section('Build');
+  const premise = plan.getByText(/The score is twice the updated reading minus the checkpoint reading/);
+  await premise.waitFor();
+  assert.equal(await premise.evaluate(node => !!node.nextElementSibling?.matches('fieldset')), true);
+  await page.getByLabel('Double 8. The score is 11.').check();
   assert.equal(await section(/^Build ·/).count(), 0);
-  await page.getByLabel('The updated reading, 5.').check();
+  await page.getByLabel('Double 5. The score is 2.').check();
   await grade(section(/^Build ·/), 'def checkpoint_difference(start, change):\n    checkpoint = start\n    start += change\n    return 2 * start - checkpoint');
   const make = section(/Reconcile two battery readings/);
   assert.match(await make.getByRole('textbox', { name: /Python code/ }).innerText(), /^# /);
   assert.equal(await button('Show full solution and explanation', make).count(), 0);
-  await press('Show hint', make);
-  await press('Another hint', make);
-  await press('Show full solution and explanation', make);
-  await make.getByText(/The test leaves 7 units/).waitFor();
+  assert.equal(await button('Run', make).count(), 0);
+  await make.getByText(/The initial charge is not a recorded reading/).waitFor();
+  const wrongBattery = 'def battery_after(start, used, restored):\n    after_test = start - used\n    return start + restored';
+  await grade(make, wrongBattery, false);
+  const feedback = make.getByText(/your code calculates after_test/i);
+  await feedback.waitFor();
+  assert.equal(await feedback.evaluate(node => node.closest('p')?.nextElementSibling?.matches('table')), true);
+  await make.getByText(/Which of the two recorded measurements is missing/).waitFor();
+  await capture('reassignment-make-coaching', make.locator('.pilot-feedback').filter({ hasText: /your code calculates after_test/i }));
+  await press('Check solution', make);
+  await make.getByText(/Where does your result first differ from the requirement/).waitFor();
+  assert.equal(await feedback.count(), 0);
   await grade(make, 'def battery_after(start, used, restored):\n    first = start - used\n    return first + (first + restored)');
-  assert.equal(await button('Finish lesson').count(), 0);
+  await make.getByRole('button', { name: 'Show hint', exact: true }).waitFor();
   await press('Try a fresh Make problem');
   await grade(section(/Score a calibration run/), 'def calibration_score(initial, first_offset, second_offset):\n    checkpoint = initial + first_offset\n    final = checkpoint + second_offset\n    return checkpoint * 2 - final');
   await press('Finish lesson');
   await page.waitForURL(at('F01.02', true));
   await page.getByText('Fresh Make problem passed.').waitFor();
-  await page.getByText('Original Make passed with help (H0, H1, H4).').waitFor();
+  await page.getByText('Original Make passed after coaching.').waitFor();
   await page.getByText('Independent coding evidence on the transfer problem.').waitFor();
   const completed = await recordFor('F01.02');
   assert(completed.completion.independent);
-  assert(completed.submissions.some(item => item.hints.includes('H4')));
-  assert.equal(completed.pack.version, '1.5.0');
-  assert.deepEqual(completed.openedTransfer, { id: 'F01.02.make-transfer', version: '1.0.0' });
+  const noted = completed.submissions.find(item => item.coaching?.id === 'unused-calculation');
+  const repaired = completed.submissions.find(item => item.corrects?.includes(noted.id));
+  assert.equal(repaired.grade.verdict, 'passed');
+  assert.equal(repaired.coachedBefore, true);
+  assert.deepEqual(repaired.hints, []);
+  assert(completed.submissions.every(item => !item.hints.includes('H4')));
+  assert.equal(completed.pack.version, '1.6.0');
+  assert.deepEqual(completed.openedTransfer, { id: 'F01.02.make-transfer', version: '1.1.0' });
   assert.equal(completed.traces[0].pattern, 'snapshot-followed-rebinding');
   assert.deepEqual(completed.traces.map(item => item.correct), [false, false, true]);
   assert.deepEqual(completed.traceHelp.map(item => item.level), ['concept', 'guidance', 'worked']);

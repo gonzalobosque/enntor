@@ -8,6 +8,11 @@ await btt('Continue to Predict').press('Enter');await p.getByLabel('Your predict
 await btt('Commit prediction & run').press('Enter');
 const mod=p.getByRole('region',{name:/^Modify/});const ed=mod.getByRole('textbox',{name:'Modify Python code'});
 await ed.waitFor();
+const predict = p.getByRole('region', { name: 'Predict' });
+await predict.getByRole('status').filter({ hasText: "That's right!" }).waitFor();
+assert.equal(await predict.locator('.pilot-console + [role="status"]').count(), 1);
+assert.equal(await p.getByRole('region', { name: 'Investigate' }).getByText("That's right!", { exact: false }).count(), 0);
+assert.equal(await btt('Run',mod).count(), 0);
 const saved=()=>p.evaluate(()=>Object.entries(localStorage).find(([k])=>k.startsWith('enntor.draft.F01.01.modify')&&!k.endsWith('.previous'))?.[1]);
 await ed.fill('def total(base, extra):');
 await ed.press('End');await ed.press('Enter');
@@ -29,9 +34,15 @@ await p.reload();await mod.getByText('Previous draft restored',{exact:true}).wai
 assert.match(await ed.innerText(),/print/);
 await btt('Check solution',mod).press('Enter');
 await mod.getByText('All public cases passed.',{exact:true}).waitFor();
-await ed.fill('while True:\n    pass');await btt('Run',mod).press('Enter');await p.waitForTimeout(800);
+await ed.fill('while True:\n    pass');await btt('Check solution',mod).press('Enter');await p.waitForTimeout(800);
 await btt('Stop',mod).press('Enter');await mod.getByText('Execution stopped.',{exact:true}).waitFor();
-await ed.fill('print(42)');await btt('Run',mod).press('Enter');await mod.getByText(/stdout\s+42/).waitFor();
+await ed.fill('def total(base, extra)\n    return base');
+await btt('Check solution',mod).press('Enter');
+await mod.getByText('Python could not parse the code (SyntaxError).', { exact: true }).waitFor();
+await ed.fill('def total(base, extra):\n    return base / 0');
+await btt('Check solution',mod).press('Enter');
+await mod.getByText('Python raised ZeroDivisionError while checking the function.', { exact: true }).waitFor();
+await ed.fill('def total(base, extra):\n    print(42)\n    return (base + extra) * 3');await btt('Check solution',mod).press('Enter');await mod.getByText(/stdout\s+42/).first().waitFor();
 p.once('dialog',d=>d.accept());await btt('Reset',mod).press('Enter');
 assert.match(await ed.innerText(),/return base \+ extra \* 3/);
 for(const theme of ['light','dark']){

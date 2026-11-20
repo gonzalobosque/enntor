@@ -1,3 +1,4 @@
+import type { CheckCoaching } from './check-coaching';
 import type { TraceAttempt, TraceHelpExposure } from './trace';
 import type { ContentReference, HintLevel } from '../courses/contracts';
 import type { ExecutionResult, GradeResult } from '../execution/contracts';
@@ -19,6 +20,9 @@ export interface Submission {
   priorPass: boolean;
   seenBefore?: boolean;
   priorSolutionHelp?: boolean;
+  coaching?: CheckCoaching & { shownAt: string };
+  coachedBefore?: boolean;
+  corrects?: string[];
   startedAt: string;
   finishedAt?: string;
   elapsedMs?: number;
@@ -107,9 +111,9 @@ export function learningState(session: LessonEvidence, modify: string, make: str
   const made = session.submissions.filter((item) =>
     [make, transfer].includes(item.exercise.id) && item.grade?.verdict === 'passed');
   const eligible = made.filter(item => item.exercise.id !== transfer || !checks?.transferTrace || transferTrace);
-  const independent = eligible.find((item) => item.hints.length === 0 && !item.priorPass && !item.seenBefore && !item.priorSolutionHelp);
+  const independent = eligible.find((item) => item.hints.length === 0 && !item.priorPass && !item.seenBefore && !item.priorSolutionHelp && !item.coachedBefore);
   const qualifying = independent ?? eligible.find((item) => !hasSolutionHelp(item.hints) && !item.priorSolutionHelp &&
-    (!freshTransferOnly || item.exercise.id === make || (item.exercise.id === transfer && (item.seenBefore || item.priorPass))));
+    (!freshTransferOnly || item.exercise.id === make || (item.exercise.id === transfer && (item.seenBefore || item.priorPass || item.coachedBefore))));
   return { prediction, investigated, trace, transferTrace, modified, built, buildPass, made, independent, qualifying,
     activitiesComplete: !!(session.learnedAt && investigated && modified && built && (!checks?.trace || trace) && eligible.length),
     canFinish: !!(session.learnedAt && investigated && modified && built && (!checks?.trace || trace) && qualifying) };

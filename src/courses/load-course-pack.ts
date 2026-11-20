@@ -6,6 +6,9 @@ export interface LessonSequence {
   trace?: TraceCheck;
   transferTrace?: TraceCheck;
   titleAccent?: string;
+  // A copy edit keeps the previous edition's behavioral contract and draft shape.
+  equivalentExerciseVersions?: Record<string, string[]>;
+  draftsFromLesson?: string;
   legacy?: { draftExerciseId: string; draftVersion: string };
   predictionCoaching: {
     explanation: TeachingProse;
@@ -25,6 +28,7 @@ export interface LessonSequence {
   };
   buildPlan: {
     prompt: TeachingProse;
+    example?: { input: number[]; expected: number };
     options: { id: string; text: string }[];
     correct: string;
     syntax: TeachingProse;
