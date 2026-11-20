@@ -58,9 +58,12 @@ test('state and identity reasoning are checked directly and versioned independen
     server: { middlewareMode: true, ws: false } });
   try {
     const { course } = await vite.ssrLoadModule('/src/courses/course.ts');
-    const { gradeTrace } = await vite.ssrLoadModule('/src/learning/trace.ts');
+    const { gradeTrace, traceHelpFor } = await vite.ssrLoadModule('/src/learning/trace.ts');
     const { learningState, finalizeEvidence, hasSeenExercise } = await vite.ssrLoadModule('/src/learning/evidence.ts');
     const stateCheck = course[1].sequence.trace;
+    const traceHelp = [{ check: stateCheck, level: 'concept', at: 'test-time' }];
+    assert.deepEqual(traceHelpFor(traceHelp, stateCheck), ['concept']);
+    assert.deepEqual(traceHelpFor(traceHelp, { ...stateCheck, version: '0.9.0' }), []);
     const mistake = gradeTrace(stateCheck, [['12','UNBOUND'], ['12','12'], ['7','7'], ['9','9']]);
     assert.equal(mistake.pattern, 'snapshot-followed-rebinding');
     assert.deepEqual(mistake.missed, [{ row: 2, column: 1 }, { row: 3, column: 1 }]);

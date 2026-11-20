@@ -1,5 +1,5 @@
 import { TraceCheckpoint } from './TraceCheckpoint';
-import { traceAttempts } from './trace';
+import { traceAttempts, traceHelpFor } from './trace';
 import type { TraceCheck } from './trace';
 import { useEffect, useRef, useState } from 'react';
 import type { LoadedLesson } from '../courses/load-course-pack';
@@ -94,12 +94,19 @@ function LessonSession({ evidence, item }: { evidence: ReturnType<typeof useEvid
   }
 
   function trace(check: TraceCheck) {
-    return <TraceCheckpoint key={check.id} check={check} attempts={traceAttempts(session.traces, check)} onCheck={grade => {
-      const seenBefore = earlierSessions.some(item => traceAttempts(item.traces, check).length > 0);
-      update(old => ({ ...old, traces: [...(old.traces ?? []), {
-        ...grade, id: crypto.randomUUID(), at: now(), check: { id: check.id, version: check.version }, seenBefore,
-      }] }));
-    }} />;
+    const ref = { id: check.id, version: check.version };
+    return <TraceCheckpoint key={check.id} check={check} attempts={traceAttempts(session.traces, ref)}
+      help={traceHelpFor(session.traceHelp, ref)}
+      onHelp={level => update(old => traceHelpFor(old.traceHelp, ref).includes(level) ? old : {
+        ...old, traceHelp: [...(old.traceHelp ?? []), { check: ref, level, at: now() }],
+      })}
+      onCheck={grade => {
+        const seenBefore = earlierSessions.some(item =>
+          traceAttempts(item.traces, ref).length > 0 || traceHelpFor(item.traceHelp, ref).length > 0);
+        update(old => ({ ...old, traces: [...(old.traces ?? []), {
+          ...grade, id: crypto.randomUUID(), at: now(), check: ref, seenBefore,
+        }] }));
+      }} />;
   }
 
   function editor(exercise: Exercise, stage: 'Modify' | 'Build' | 'Make') {

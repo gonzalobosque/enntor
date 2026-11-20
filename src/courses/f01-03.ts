@@ -69,6 +69,15 @@ export const f0103Sequence: LessonSequence = {
     columns: ['second', 'Same object?', 'Equal contents?'],
     rows: [{ label: 'Line 2', expected: ['a', 'yes', 'yes'] }, { label: 'Line 3', expected: ['b', 'no', 'yes'] },
       { label: 'Line 4', expected: ['a', 'yes', 'yes'] }],
+    help: {
+      concept: 'Draw an arrow from each name to a list. Check the arrows for identity and the entries for equality.',
+      guidance: 'A name on the right reuses its arrow target. A list display makes a different object, even if the entries match.',
+      worked: [
+        'Second receives the reference already held by first, so both comparisons are true.',
+        'The new list has the same entry as A, but the arrow from second now ends at B.',
+        'The assignment gives second the reference to A again, so both names share it.',
+      ],
+    },
     mistake: { id: 'equal-implies-identical', message: 'Your line 3 comparison treats the equal entry as the same object. Check where the list was created.',
       cells: [{ row: 1, column: 0, value: 'b' }, { row: 1, column: 1, value: 'yes' }, { row: 1, column: 2, value: 'yes' }] },
   },
@@ -77,6 +86,15 @@ export const f0103Sequence: LessonSequence = {
     prompt: 'Compare desk with archive after each indicated line. Answer yes or no. Follow both names when archive itself is rebound.',
     source: 'archive = [8]\ndesk = archive\narchive = [8]\nbackup = archive\ndesk = backup\ndesk = [4]',
     columns: ['Same object?', 'Equal contents?'],
+    help: {
+      concept: 'Track the object behind each name before comparing their entries.',
+      guidance: 'After rebinding archive, keep the prior arrow from desk until a line assigns to desk. Then follow the reference held by backup.',
+      worked: [
+        'Archive now points to a new list. Desk still points to the original list with the same entry.',
+        'Backup holds the new archive reference. Assigning it to desk reconnects the two names.',
+        'Desk now points to another list, and its entry differs from the archive entry.',
+      ],
+    },
     rows: [{ label: 'Line 3', expected: ['no', 'yes'] }, { label: 'Line 5', expected: ['yes', 'yes'] },
       { label: 'Line 6', expected: ['no', 'no'] }],
   },

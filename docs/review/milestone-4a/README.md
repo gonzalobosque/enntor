@@ -1,6 +1,6 @@
 # Milestone 4A teaching review
 
-Self-review updated 20 November 2026 after the independent review. Re-review is pending. Source is the [authoritative curriculum v1.1, F01](../../Python_AI_Interview_Learning_Curriculum_v1.1.md#2-f01--execution-state-and-references). The product sequence is F01.01 → F01.02 → F01.03. F01.01 content stays at lesson edition 1.3.0, with prior completed editions accepted for progression. This entry does not implement O00 placement or an F01 module gate.
+Self-review updated 20 November 2026 after the independent review. Final re-review and a product-owner hands-on trial of F01.02 and F01.03 are required before merge. Source is the [authoritative curriculum v1.1, F01](../../Python_AI_Interview_Learning_Curriculum_v1.1.md#2-f01--execution-state-and-references). The product sequence is F01.01 → F01.02 → F01.03. F01.01 content stays at lesson edition 1.3.0, with prior completed editions accepted for progression. This entry does not implement O00 placement or an F01 module gate.
 
 The three-lesson boundary lets the learner move from expression dependencies to time-varying bindings and then to two kinds of comparison. Identity uses list construction and indexing as a minimal bridge. F01.04 can reuse the identity diagrams when it introduces mutation. It would be premature to introduce mutation or copying while the learner is still distinguishing arrows and contents.
 
@@ -10,6 +10,7 @@ The three-lesson boundary lets the learner move from expression dependencies to 
 | Reassignment, desktop, a wrong prediction | [Investigate and learner-confirmed hypothesis](reassignment-investigate.jpg) |
 | Reassignment, incorrect intermediate binding | [Graded state table](reassignment-trace.jpg) |
 | Identity, narrow dark theme after the handoff trace | [Identity and equality checked separately](identity-transfer-trace.jpg) |
+| Reassignment, worked trace requested after repeated mistakes | [Worked explanation and continuation](reassignment-worked-trace.jpg) |
 | Reassignment, desktop, assisted Make followed by unaided transfer | [Saved result](reassignment-report.jpg) |
 | Identity, narrow dark theme and blank editor | [Make contract, hint disclosure and editor](identity-make-dark-mobile.jpg) |
 
@@ -42,3 +43,10 @@ The content report and automated suite executed the existing pilot and both new 
 ## Independent review checklist
 
 Read both lessons in order alongside the full curriculum. Verify the stated prerequisites, copy, intended and alternative solutions, exact levels of disclosure, and how fresh transfer differs from Make. Review the checks for cases in which a shallow implementation passes. Inspect the keyboard route, history boundaries, both themes and responsive screenshots. Physical Android, Safari and screen-reader behavior were outside the synthetic Chromium checks. There are no durable cross-device or comprehensive multi-tab guarantees. The authoring report checks reliable executable and structural conditions; pedagogical review and learner outcomes require separate evidence.
+
+
+## Trace assistance and owner trial
+
+All three gated tables offer a conceptual hint, a more concrete tracing method and a learner-requested worked explanation for each row. A wrong check never opens the answer. Learners can use the worked trace to correct their own table and submit it. Each help exposure stores the trace ID, edition, level and time separately from the answers and correctness. The report labels passes with trace guidance or the worked explanation as assisted. Coding passes and transfer gates retain their existing rules.
+
+For the owner trial, try both lessons on the local development instance. Submit a wrong intermediate binding or comparison twice, ask for each help level, reload and use the worked explanation to finish the table. Check that the subsequent activity opens and that the saved report describes the trace assistance and coding outcome separately. In F01.03, try the same flow on the handoff trace after revealing the Make solution.

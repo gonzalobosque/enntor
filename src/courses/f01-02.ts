@@ -65,6 +65,16 @@ export const f0102Sequence: LessonSequence = {
       { label: 'Line 1', expected: ['12', 'unbound'] }, { label: 'Line 2', expected: ['12', '12'] },
       { label: 'Line 3', expected: ['7', '12'] }, { label: 'Line 4', expected: ['9', '12'] },
     ],
+    help: {
+      concept: 'Give each name its own column. A change in one column does not automatically change the other.',
+      guidance: 'Read the assignment from right to left, then move only the name on the left. On line 4, use the value of stock from line 3.',
+      worked: [
+        'Only stock has been assigned, so before has no binding yet.',
+        'The assignment gives before the value currently bound to stock.',
+        'Subtract five from stock and rebind it. The assignment does not target before.',
+        'Add two to the current stock. Before still holds the earlier reading.',
+      ],
+    },
     mistake: { id: 'snapshot-followed-rebinding', message: 'Your last two rows move both names together. Which name appears on the left of each update?',
       cells: [{ row: 2, column: 0, value: '7' }, { row: 2, column: 1, value: '7' },
         { row: 3, column: 0, value: '9' }, { row: 3, column: 1, value: '9' }] },

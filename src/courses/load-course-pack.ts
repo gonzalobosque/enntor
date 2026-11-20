@@ -77,7 +77,8 @@ export function loadCoursePack(pack: CoursePack, sequences: Record<string, Lesso
       for (const trace of [sequence.trace, sequence.transferTrace]) {
         if (!trace) continue;
         require(trace.id.startsWith(lessonId + '.') && version.test(trace.version) && trace.columns.length && trace.rows.length &&
-          new Set(trace.columns).size === trace.columns.length &&
+          trace.help.concept.trim() && trace.help.guidance.trim() && trace.help.worked.length === trace.rows.length &&
+          trace.help.worked.every(line => line.trim()) && new Set(trace.columns).size === trace.columns.length &&
           new Set(trace.rows.map(row => row.label)).size === trace.rows.length &&
           trace.rows.every(row => row.expected.length === trace.columns.length && row.expected.every(cell => cell.trim() === cell && cell === cell.toLowerCase() && !!cell)),
         trace.id + ' trace grid');

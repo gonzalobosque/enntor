@@ -1,3 +1,4 @@
+import { traceHelpFor } from './trace';
 import type { ReactNode } from 'react';
 import type { LoadedLesson } from '../courses/load-course-pack';
 import { lessonPath } from '../app/areas';
@@ -49,7 +50,9 @@ export function LessonReport({ item, session, reports, onReport, storageAlert, o
             const first = session.traces?.find(item => item.check.id === attempt.check.id && item.check.version === attempt.check.version);
             const title = [sequence.trace, sequence.transferTrace].find(item => item?.id === attempt.check.id &&
               item.version === attempt.check.version)?.title ?? attempt.check.id;
-            return <li key={attempt.id}>{title}: {attempt.seenBefore ? 'passed on a previously seen trace' :
+            const help = traceHelpFor(session.traceHelp, attempt.check);
+            return <li key={attempt.id}>{title}: {help.includes('worked') ? 'passed after reviewing the worked trace (assisted)' :
+              help.length ? 'passed with trace guidance (assisted)' : attempt.seenBefore ? 'passed on a previously seen trace' :
               first?.id === attempt.id ? 'passed on the first check' : 'passed after feedback'}.</li>;
           })}
         </ul>

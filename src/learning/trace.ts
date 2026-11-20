@@ -6,6 +6,7 @@ export interface TraceCheck extends ContentReference {
   source: string;
   columns: string[];
   rows: { label: string; expected: string[] }[];
+  help: { concept: string; guidance: string; worked: string[] };
   mistake?: { id: string; message: string; cells: { row: number; column: number; value: string }[] };
 }
 
@@ -28,4 +29,17 @@ export interface TraceAttempt extends ReturnType<typeof gradeTrace> {
 
 export function traceAttempts(attempts: TraceAttempt[] = [], check: ContentReference) {
   return attempts.filter(item => item.check.id === check.id && item.check.version === check.version);
+}
+
+export type TraceHelpLevel = 'concept' | 'guidance' | 'worked';
+export const traceHelpOrder: TraceHelpLevel[] = ['concept', 'guidance', 'worked'];
+
+export interface TraceHelpExposure {
+  check: ContentReference;
+  level: TraceHelpLevel;
+  at: string;
+}
+
+export function traceHelpFor(exposures: TraceHelpExposure[] = [], check: ContentReference) {
+  return exposures.filter(item => item.check.id === check.id && item.check.version === check.version).map(item => item.level);
 }

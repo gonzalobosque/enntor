@@ -1,4 +1,4 @@
-import type { TraceAttempt } from './trace';
+import type { TraceAttempt, TraceHelpExposure } from './trace';
 import type { ContentReference, HintLevel } from '../courses/contracts';
 import type { ExecutionResult, GradeResult } from '../execution/contracts';
 
@@ -40,6 +40,7 @@ export interface LessonEvidence {
   transferOpenedAt?: string;
   openedTransfer?: ContentReference;
   traces?: TraceAttempt[];
+  traceHelp?: TraceHelpExposure[];
   sweat?: Sweat;
   prediction?: {
     id: string; exercise: ContentReference; answer: string; committedAt: string;

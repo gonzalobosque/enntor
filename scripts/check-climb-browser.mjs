@@ -94,8 +94,22 @@ try {
   await stateTrace.getByText(/move both names together/).waitFor();
   assert.equal(await section(/^Modify/).count(), 0);
   await capture('reassignment-trace', stateTrace);
+  await checkTrace('Trace both bindings', ['12', 'unbound', '12', '11', '7', '12', '9', '12']);
+  await stateTrace.getByText(/Recheck Line 2/).waitFor();
+  assert.equal(await stateTrace.getByRole('heading', { name: 'Worked trace' }).count(), 0);
+  await press('Show trace hint', stateTrace);
+  await stateTrace.getByText(/each name its own column/).waitFor();
   await page.reload();
-  await stateTrace.getByText(/move both names together/).waitFor();
+  await stateTrace.getByText(/each name its own column/).waitFor();
+  assert.equal(await stateTrace.getByRole('textbox').nth(3).inputValue(), '11');
+  await press('Show tracing guidance', stateTrace);
+  await stateTrace.getByText(/move only the name on the left/).waitFor();
+  await press('Show worked trace', stateTrace);
+  await page.reload();
+  await stateTrace.getByRole('heading', { name: 'Worked trace' }).waitFor();
+  assert.equal(await section(/^Modify/).count(), 0);
+  assert.equal(await stateTrace.getByRole('textbox').nth(3).inputValue(), '11');
+  await capture('reassignment-worked-trace', stateTrace);
   await checkTrace('Trace both bindings', ['12', 'unbound', '12', '12', '7', '12', '9', '12']);
   const modify = section(/^Modify/);
   const draft = 'def starting_reading(reading, correction):\n    recorded = reading\n    reading += correction\n    return recorded';
@@ -130,7 +144,11 @@ try {
   assert.equal(completed.pack.version, '1.5.0');
   assert.deepEqual(completed.openedTransfer, { id: 'F01.02.make-transfer', version: '1.0.0' });
   assert.equal(completed.traces[0].pattern, 'snapshot-followed-rebinding');
-  assert.deepEqual(completed.completion.traceIds, [completed.traces[1].id]);
+  assert.deepEqual(completed.traces.map(item => item.correct), [false, false, true]);
+  assert.deepEqual(completed.traceHelp.map(item => item.level), ['concept', 'guidance', 'worked']);
+  assert(completed.traceHelp.every(item => item.check.id === 'F01.02.state-trace' && item.check.version === '1.0.0'));
+  assert.deepEqual(completed.completion.traceIds, [completed.traces[2].id]);
+  await page.getByText('Trace both bindings: passed after reviewing the worked trace (assisted).').waitFor();
   await capture('reassignment-report', section('Activity outcomes'));
 
   await link('Back to The Climb').press('Enter');
@@ -145,6 +163,7 @@ try {
   const referenceTrace = await checkTrace('Trace references and contents', ['A', 'yes', 'yes', 'B', 'yes', 'yes', 'A', 'yes', 'yes']);
   await referenceTrace.getByText(/equal entry as the same object/).waitFor();
   assert.equal(await section(/^Modify/).count(), 0);
+  await press('Show trace hint', referenceTrace);
   await checkTrace('Trace references and contents', ['A', 'yes', 'yes', 'B', 'no', 'yes', 'A', 'yes', 'yes']);
   await grade(section(/^Modify/), 'def matching_readings(left, right):\n    return int([left] == [right])');
   await page.getByLabel('0, because the slot contains a distinct list.').check();
@@ -175,7 +194,7 @@ try {
   await press('Finish lesson');
   await page.waitForURL(at('F01.03', true));
   await page.getByText('Independent coding evidence on the transfer problem.').waitFor();
-  await page.getByText('Trace references and contents: passed after feedback.').waitFor();
+  await page.getByText('Trace references and contents: passed with trace guidance (assisted).').waitFor();
   await page.getByText('Trace the handoff: passed on the first check.').waitFor();
   const identity = await recordFor('F01.03');
   assert.equal(identity.completion.traceIds.length, 2);
@@ -192,7 +211,7 @@ try {
   // Restore a synthetic repeat right before Make. The previous session above
   // really attempted and completed the only transfer, with separately saved evidence.
   const repeat = { ...completed, id: 'synthetic-repeat', startedAt: '2099-01-01T00:00:00Z',
-    completion: undefined, transferOpenedAt: undefined, openedTransfer: undefined, hints: [],
+    completion: undefined, transferOpenedAt: undefined, openedTransfer: undefined, hints: [], traceHelp: [],
     traces: completed.traces.filter(item => item.correct).map(item => ({ ...item, id: 'repeat-trace', seenBefore: true })),
     submissions: completed.submissions.filter(item => /\.(modify|build)$/.test(item.exercise.id)),
   };
