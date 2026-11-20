@@ -38,6 +38,7 @@ export interface LessonEvidence {
   buildPlan?: { choice: string; correct: boolean; at: string };
   buildChecks?: { choice: string; correct: boolean; at: string }[];
   transferOpenedAt?: string;
+  openedTransfer?: ContentReference;
   traces?: TraceAttempt[];
   sweat?: Sweat;
   prediction?: {
@@ -81,6 +82,12 @@ export function writeEvidence(session: LessonEvidence, expected?: LessonEvidence
     throw new Error('This session was changed in another tab.');
   }
   localStorage.setItem(key, JSON.stringify(session));
+}
+
+export function hasSeenExercise(history: LessonEvidence[], exercise: ContentReference) {
+  const matches = (item?: ContentReference) => item?.id === exercise.id && item.version === exercise.version;
+  return history.some(item => matches(item.openedTransfer) ||
+    item.submissions.some(attempt => matches(attempt.exercise)) || item.hints.some(hint => matches(hint.exercise)));
 }
 
 export const hasSolutionHelp = (hints: HintLevel[]) => hints.some((level) => level === 'H3' || level === 'H4');

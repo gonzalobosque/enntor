@@ -128,6 +128,7 @@ try {
   assert(completed.completion.independent);
   assert(completed.submissions.some(item => item.hints.includes('H4')));
   assert.equal(completed.pack.version, '1.5.0');
+  assert.deepEqual(completed.openedTransfer, { id: 'F01.02.make-transfer', version: '1.0.0' });
   assert.equal(completed.traces[0].pattern, 'snapshot-followed-rebinding');
   assert.deepEqual(completed.completion.traceIds, [completed.traces[1].id]);
   await capture('reassignment-report', section('Activity outcomes'));
@@ -191,7 +192,7 @@ try {
   // Restore a synthetic repeat right before Make. The previous session above
   // really attempted and completed the only transfer, with separately saved evidence.
   const repeat = { ...completed, id: 'synthetic-repeat', startedAt: '2099-01-01T00:00:00Z',
-    completion: undefined, transferOpenedAt: undefined, hints: [],
+    completion: undefined, transferOpenedAt: undefined, openedTransfer: undefined, hints: [],
     traces: completed.traces.filter(item => item.correct).map(item => ({ ...item, id: 'repeat-trace', seenBefore: true })),
     submissions: completed.submissions.filter(item => /\.(modify|build)$/.test(item.exercise.id)),
   };

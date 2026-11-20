@@ -59,7 +59,7 @@ test('state and identity reasoning are checked directly and versioned independen
   try {
     const { course } = await vite.ssrLoadModule('/src/courses/course.ts');
     const { gradeTrace } = await vite.ssrLoadModule('/src/learning/trace.ts');
-    const { learningState, finalizeEvidence } = await vite.ssrLoadModule('/src/learning/evidence.ts');
+    const { learningState, finalizeEvidence, hasSeenExercise } = await vite.ssrLoadModule('/src/learning/evidence.ts');
     const stateCheck = course[1].sequence.trace;
     const mistake = gradeTrace(stateCheck, [['12','UNBOUND'], ['12','12'], ['7','7'], ['9','9']]);
     assert.equal(mistake.pattern, 'snapshot-followed-rebinding');
@@ -67,6 +67,10 @@ test('state and identity reasoning are checked directly and versioned independen
     assert.equal(gradeTrace(stateCheck, [['12','unbound'], ['12','12'], ['7','12'], ['9','12']]).correct, true);
 
     const { trace, transferTrace } = course[2].sequence;
+    const { id, version } = course[2].transfer;
+    const openedOnly = [{ openedTransfer: { id, version }, submissions: [], hints: [] }];
+    assert.equal(hasSeenExercise(openedOnly, { id, version }), true);
+    assert.equal(hasSeenExercise(openedOnly, { id, version: '1.0.0' }), false);
     assert.equal(gradeTrace(trace, [['a','yes','yes'], ['b','yes','yes'], ['a','yes','yes']]).pattern, 'equal-implies-identical');
     const attempt = (id, hints = []) => ({ id, exercise: { id }, grade: { verdict: 'passed' }, hints });
     const direct = { id: 'direct', check: trace, ...gradeTrace(trace, trace.rows.map(row => row.expected)) };

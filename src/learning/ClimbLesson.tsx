@@ -9,7 +9,7 @@ import { pythonEngine } from '../execution/python-engine';
 import { TeachingText, TeachingProseText } from './TeachingText';
 import { PredictionReview } from './PredictionReview';
 import { Console, ExerciseEditor } from './ExerciseEditor';
-import { finalizeEvidence, hasSolutionHelp, learningState, now } from './evidence';
+import { finalizeEvidence, hasSeenExercise, hasSolutionHelp, learningState, now } from './evidence';
 import type { Submission } from './evidence';
 import { useEvidence } from './useEvidence';
 import { LessonReport } from './LessonReport';
@@ -39,9 +39,7 @@ function LessonSession({ evidence, item }: { evidence: ReturnType<typeof useEvid
   const { session, history, update, save, error, startAgain } = evidence;
   const state = learningState(session, modification.id, make.id, transfer.id, build.id, !legacy, sequence);
   const earlierSessions = history.filter(({ id }) => id !== session.id);
-  const seenExercise = (exercise: Exercise) => earlierSessions.some(item =>
-    item.submissions.some(attempt => attempt.exercise.id === exercise.id && attempt.exercise.version === exercise.version) ||
-    item.hints.some(hint => hint.exercise.id === exercise.id && hint.exercise.version === exercise.version));
+  const seenExercise = (exercise: Exercise) => hasSeenExercise(earlierSessions, exercise);
   const repeatTransfer = !legacy && seenExercise(transfer);
   const [answer, setAnswer] = useState(session.prediction?.answer ?? '');
   const showTransfer = !!session.transferOpenedAt;
@@ -219,7 +217,7 @@ function LessonSession({ evidence, item }: { evidence: ReturnType<typeof useEvid
         {state.modified && session.buildPlan?.correct && editor(build, 'Build')}
         {state.built && editor(make, 'Make')}
         {state.built && assistance && !state.independent && !showTransfer && <div className="pilot-controls">
-          <button disabled={!!busyCount} onClick={() => update((old) => ({ ...old, transferOpenedAt: now() }))}>{repeatTransfer ? 'Practise the transfer again' : 'Try a fresh Make problem'}</button>
+          <button disabled={!!busyCount} onClick={() => update((old) => ({ ...old, transferOpenedAt: now(), openedTransfer: { id: transfer.id, version: transfer.version } }))}>{repeatTransfer ? 'Practise the transfer again' : 'Try a fresh Make problem'}</button>
         </div>}
         {state.built && showTransfer && <>
           {repeatTransfer && <p className="pilot-feedback">You have already seen this transfer. A correct repeat can finish this session as practice, without new independent coding evidence.</p>}
