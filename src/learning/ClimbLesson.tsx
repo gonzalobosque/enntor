@@ -1,3 +1,6 @@
+import { TraceCheckpoint } from './TraceCheckpoint';
+import { traceAttempts } from './trace';
+import type { TraceCheck } from './trace';
 import { useEffect, useRef, useState } from 'react';
 import type { LoadedLesson } from '../courses/load-course-pack';
 import type { Exercise, HintLevel } from '../courses/contracts';
@@ -34,7 +37,12 @@ function LessonSession({ evidence, item }: { evidence: ReturnType<typeof useEvid
   const { buildPlan, predictionCoaching, legacy } = sequence;
   const resultsPath = lessonPath(lesson.id, true);
   const { session, history, update, save, error, startAgain } = evidence;
-  const state = learningState(session, modification.id, make.id, transfer.id, build.id, !legacy);
+  const state = learningState(session, modification.id, make.id, transfer.id, build.id, !legacy, sequence);
+  const earlierSessions = history.filter(({ id }) => id !== session.id);
+  const seenExercise = (exercise: Exercise) => earlierSessions.some(item =>
+    item.submissions.some(attempt => attempt.exercise.id === exercise.id && attempt.exercise.version === exercise.version) ||
+    item.hints.some(hint => hint.exercise.id === exercise.id && hint.exercise.version === exercise.version));
+  const repeatTransfer = !legacy && seenExercise(transfer);
   const [answer, setAnswer] = useState(session.prediction?.answer ?? '');
   const showTransfer = !!session.transferOpenedAt;
   const [predicting, setPredicting] = useState(false);
@@ -87,20 +95,28 @@ function LessonSession({ evidence, item }: { evidence: ReturnType<typeof useEvid
       : [...old.submissions, attempt] }));
   }
 
+  function trace(check: TraceCheck) {
+    return <TraceCheckpoint key={check.id} check={check} attempts={traceAttempts(session.traces, check)} onCheck={grade => {
+      const seenBefore = earlierSessions.some(item => traceAttempts(item.traces, check).length > 0);
+      update(old => ({ ...old, traces: [...(old.traces ?? []), {
+        ...grade, id: crypto.randomUUID(), at: now(), check: { id: check.id, version: check.version }, seenBefore,
+      }] }));
+    }} />;
+  }
+
   function editor(exercise: Exercise, stage: 'Modify' | 'Build' | 'Make') {
     const legacyDraft = legacy?.draftExerciseId === exercise.id;
     const draftVersion = legacyDraft ? legacy.draftVersion : exercise.version;
     const base = `enntor.draft.${exercise.id}.${draftVersion}`;
     const key = session.legacyDrafts && legacyDraft ? base : `${base}.${session.id}`;
     const visibleHints = session.hints.filter((hint) => hint.exercise.id === exercise.id && hint.exercise.version === exercise.version).map(({ level }) => level);
-    const previous = history.filter(({ id }) => id !== session.id);
+    const previous = earlierSessions;
     const priorHints = previous.flatMap((item) => item.hints).filter((hint) => hint.exercise.id === exercise.id &&
       (legacy || hint.exercise.version === exercise.version))
       .map(({ level }) => level);
     const priorPass = previous.some((item) => item.submissions.some((attempt) =>
       attempt.exercise.id === exercise.id && (legacy || attempt.exercise.version === exercise.version) && attempt.grade?.verdict === 'passed'));
-    const seenBefore = !legacy && (priorHints.length > 0 || previous.some((item) => item.submissions.some((attempt) =>
-      attempt.exercise.id === exercise.id && attempt.exercise.version === exercise.version)));
+    const seenBefore = !legacy && seenExercise(exercise);
     return <ExerciseEditor key={exercise.id} {...{ stage, exercise, draftKey: key, priorPass }}
       hints={visibleHints} feedback={stage === 'Modify' ? predictionCoaching.modifyFeedback : undefined}
       onBusy={(value) => setBusy((old) => ({ ...old, [exercise.id]: value }))}
@@ -112,7 +128,7 @@ function LessonSession({ evidence, item }: { evidence: ReturnType<typeof useEvid
         hints: legacy ? [...new Set([...priorHints, ...attempt.hints])] : attempt.hints })} />;
   }
 
-  const stage = session.completion ? 7 : state.canFinish ? 6 : state.built ? 5 : state.modified ? 4 : state.investigated ? 3
+  const stage = session.completion ? 7 : state.canFinish ? 6 : state.built ? 5 : state.modified ? 4 : state.investigated && (!sequence.trace || state.trace) ? 3
     : state.prediction ? 2 : session.learnedAt ? 1 : 0;
   const output = state.prediction?.stdout.trim();
   const lastRun = session.prediction?.runs.at(-1);
@@ -179,7 +195,8 @@ function LessonSession({ evidence, item }: { evidence: ReturnType<typeof useEvid
           followUpResult={session.followUps.at(-1)}
           onFollowUp={(submitted, correct) => update((old) => ({ ...old, followUps: [...old.followUps,
             { id: crypto.randomUUID(), answer: submitted, correct, expected: predictionCoaching.followUp.expected, at: now() }] }))} />}
-        {state.investigated && editor(modification, 'Modify')}
+        {state.investigated && sequence.trace && trace(sequence.trace)}
+        {state.investigated && (!sequence.trace || state.trace) && editor(modification, 'Modify')}
         {state.modified && <section className="pilot-section" aria-labelledby="build-plan-heading">
           <h2 id="build-plan-heading" className="pilot-stage-heading">Build</h2>
           <h3 className="pilot-exercise-heading">Plan the function</h3>
@@ -202,13 +219,12 @@ function LessonSession({ evidence, item }: { evidence: ReturnType<typeof useEvid
         {state.modified && session.buildPlan?.correct && editor(build, 'Build')}
         {state.built && editor(make, 'Make')}
         {state.built && assistance && !state.independent && !showTransfer && <div className="pilot-controls">
-          <button disabled={!!busyCount} onClick={() => update((old) => ({ ...old, transferOpenedAt: now() }))}>Try a fresh Make problem</button>
+          <button disabled={!!busyCount} onClick={() => update((old) => ({ ...old, transferOpenedAt: now() }))}>{repeatTransfer ? 'Practise the transfer again' : 'Try a fresh Make problem'}</button>
         </div>}
         {state.built && showTransfer && <>
-          {!legacy && history.some((item) => item.id !== session.id &&
-            item.submissions.some((attempt) => attempt.exercise.id === transfer.id && attempt.exercise.version === transfer.version)) &&
-            <p className="pilot-feedback">You have already attempted this transfer problem. A repeat is practice. This edition has no second transfer variant.</p>}
-          {editor(transfer, 'Make')}
+          {repeatTransfer && <p className="pilot-feedback">You have already seen this transfer. A correct repeat can finish this session as practice, without new independent coding evidence.</p>}
+          {sequence.transferTrace && trace(sequence.transferTrace)}
+          {(!sequence.transferTrace || state.transferTrace) && editor(transfer, 'Make')}
         </>}
       </>}
       <section className="pilot-section" aria-labelledby="finish-heading">
@@ -218,8 +234,9 @@ function LessonSession({ evidence, item }: { evidence: ReturnType<typeof useEvid
         ) : (
           <>
             {!state.canFinish && <p>{state.built && state.made.length
-              ? 'The passing Make solution used implementation help. Pass the fresh Make problem to finish.'
-              : 'Complete the prediction review and pass Modify, Build, and Make to finish.'}</p>}
+              ? repeatTransfer ? 'Pass the transfer again to finish this practice session.'
+                : 'Pass the transfer to finish after using solution help.'
+              : 'Complete Investigate and any trace checks, then pass Modify, Build, and Make.'}</p>}
             <div className="pilot-controls">
               {state.canFinish ? <button className="pilot-primary" disabled={blocked} onClick={() => {
                 if (update((old) => finalizeEvidence(old, state), true)) window.location.hash = '/' + resultsPath;

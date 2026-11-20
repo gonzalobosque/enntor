@@ -6,8 +6,8 @@ import { pythonEngineId, pythonVersion } from '../execution/python-config';
 import type { CoursePack } from './contracts';
 
 export const coursePack = {
-  ...pilotPack, version: '1.4.0', description: 'Start with expressions, then follow how Python names and objects change.',
-  modules: [{ ...pilotPack.modules[0], version: '1.1.0', lessonIds: ['F01.01', f0102Lesson.id, f0103Lesson.id] }],
+  ...pilotPack, version: '1.5.0', description: 'Start with expressions, then follow how Python names and objects change.',
+  modules: [{ ...pilotPack.modules[0], version: '1.2.0', lessonIds: ['F01.01', f0102Lesson.id, f0103Lesson.id] }],
   lessons: [...pilotPack.lessons, f0102Lesson, f0103Lesson],
   exercises: [...pilotPack.exercises, ...f0102Exercises, ...f0103Exercises],
 } satisfies CoursePack;

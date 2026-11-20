@@ -43,7 +43,16 @@ try {
   async function followUp(answer) {
     await page.getByRole('textbox', { name: 'Follow-up prediction' }).fill(answer);
     await press('Check prediction');
-    await section(/^Modify/).waitFor();
+  }
+
+  async function checkTrace(name, answers) {
+    const area = section(name);
+    await area.waitFor();
+    const fields = area.getByRole('textbox');
+    assert.equal(await fields.count(), answers.length);
+    for (let i = 0; i < answers.length; i++) await fields.nth(i).fill(answers[i]);
+    await press('Check trace', area);
+    return area;
   }
 
   await page.goto(at('F01.02'));
@@ -81,6 +90,13 @@ try {
   await page.getByLabel('Yes, I changed both names').check();
   await capture('reassignment-investigate', section('Investigate'));
   await followUp('5');
+  const stateTrace = await checkTrace('Trace both bindings', ['12', 'unbound', '12', '12', '7', '7', '9', '9']);
+  await stateTrace.getByText(/move both names together/).waitFor();
+  assert.equal(await section(/^Modify/).count(), 0);
+  await capture('reassignment-trace', stateTrace);
+  await page.reload();
+  await stateTrace.getByText(/move both names together/).waitFor();
+  await checkTrace('Trace both bindings', ['12', 'unbound', '12', '12', '7', '12', '9', '12']);
   const modify = section(/^Modify/);
   const draft = 'def starting_reading(reading, correction):\n    recorded = reading\n    reading += correction\n    return recorded';
   await modify.getByRole('textbox', { name: /Python code/ }).fill(draft);
@@ -107,11 +123,13 @@ try {
   await page.waitForURL(at('F01.02', true));
   await page.getByText('Fresh Make problem passed.').waitFor();
   await page.getByText('Original Make passed with help (H0, H1, H4).').waitFor();
-  await page.getByText('Independent skill demonstrated on the transfer problem.').waitFor();
+  await page.getByText('Independent coding evidence on the transfer problem.').waitFor();
   const completed = await recordFor('F01.02');
   assert(completed.completion.independent);
   assert(completed.submissions.some(item => item.hints.includes('H4')));
-  assert.equal(completed.pack.version, '1.4.0');
+  assert.equal(completed.pack.version, '1.5.0');
+  assert.equal(completed.traces[0].pattern, 'snapshot-followed-rebinding');
+  assert.deepEqual(completed.completion.traceIds, [completed.traces[1].id]);
   await capture('reassignment-report', section('Activity outcomes'));
 
   await link('Back to The Climb').press('Enter');
@@ -123,6 +141,10 @@ try {
   await predict('2', '1');
   await page.getByLabel('Yes, I treated equal contents as the same object').check();
   await followUp('0');
+  const referenceTrace = await checkTrace('Trace references and contents', ['A', 'yes', 'yes', 'B', 'yes', 'yes', 'A', 'yes', 'yes']);
+  await referenceTrace.getByText(/equal entry as the same object/).waitFor();
+  assert.equal(await section(/^Modify/).count(), 0);
+  await checkTrace('Trace references and contents', ['A', 'yes', 'yes', 'B', 'no', 'yes', 'A', 'yes', 'yes']);
   await grade(section(/^Modify/), 'def matching_readings(left, right):\n    return int([left] == [right])');
   await page.getByLabel('0, because the slot contains a distinct list.').check();
   await grade(section(/^Build ·/), 'def shared_slot(reading, slot):\n    original = [reading]\n    entries = [original, [reading]]\n    return int(entries[slot] is original)');
@@ -138,10 +160,25 @@ try {
     await capture('identity-make-dark-mobile', page);
     await page.setViewportSize({ width: 390, height: 840 });
   }
-  await grade(rack, 'def rack_badge(primary, spare, slot):\n    first = [primary]\n    slots = [first, first, [spare]]\n    target = slots[slot]\n    return int(target is first) + int(target == first)');
+  await press('Show hint', rack);
+  await press('Another hint', rack);
+  await press('Show full solution and explanation', rack);
+  await grade(rack, 'def rack_badge(primary, spare, slot):\n    return 2 if slot in (0, 1) else int(primary == spare)');
+  await press('Try a fresh Make problem');
+  const handoff = section('Trace the handoff');
+  await handoff.waitFor();
+  assert.equal(await section(/Count duplicates across two handoffs/).count(), 0);
+  await checkTrace('Trace the handoff', ['no', 'yes', 'yes', 'yes', 'no', 'no']);
+  await capture('identity-transfer-trace', handoff);
+  await grade(section(/Count duplicates across two handoffs/), 'def duplicate_flag(level, first, second, restore):\n    return int(first == level) + int(restore == 0 and second == level)');
   await press('Finish lesson');
   await page.waitForURL(at('F01.03', true));
-  await page.getByText('Independent skill demonstrated on this problem.').waitFor();
+  await page.getByText('Independent coding evidence on the transfer problem.').waitFor();
+  await page.getByText('Trace references and contents: passed after feedback.').waitFor();
+  await page.getByText('Trace the handoff: passed on the first check.').waitFor();
+  const identity = await recordFor('F01.03');
+  assert.equal(identity.completion.traceIds.length, 2);
+  assert.equal(identity.traces[0].pattern, 'equal-implies-identical');
   await page.getByLabel('Just a little droplet (+0.5)', { exact: true }).check();
   await page.reload();
   await page.getByLabel('Just a little droplet (+0.5)', { exact: true }).waitFor();
@@ -151,7 +188,30 @@ try {
   await link('View report for F01.02').press('Enter');
   await page.getByText('Fresh Make problem passed.').waitFor();
   assert.deepEqual(await recordFor('F01.02'), completed);
-  console.log('Climb prerequisites, two new lessons, assisted transfer, archive, drafts, keyboard, themes and reports passed.');
+  // Restore a synthetic repeat right before Make. The previous session above
+  // really attempted and completed the only transfer, with separately saved evidence.
+  const repeat = { ...completed, id: 'synthetic-repeat', startedAt: '2099-01-01T00:00:00Z',
+    completion: undefined, transferOpenedAt: undefined, hints: [],
+    traces: completed.traces.filter(item => item.correct).map(item => ({ ...item, id: 'repeat-trace', seenBefore: true })),
+    submissions: completed.submissions.filter(item => /\.(modify|build)$/.test(item.exercise.id)),
+  };
+  await page.evaluate(item => localStorage.setItem('enntor.evidence.v1.' + item.id, JSON.stringify(item)), repeat);
+  await page.goto(at('F01.02'));
+  await page.reload();
+  await press('Show hint', make);
+  await press('Another hint', make);
+  await press('Show full solution and explanation', make);
+  await grade(make, 'def battery_after(start, used, restored):\n    first = start - used\n    return first + (first + restored)');
+  await press('Practise the transfer again');
+  await page.getByText(/finish this session as practice/).waitFor();
+  assert.equal(await button('Finish lesson').count(), 0);
+  await grade(section(/Score a calibration run/), 'def calibration_score(initial, first_offset, second_offset):\n    checkpoint = initial + first_offset\n    return checkpoint - second_offset');
+  await press('Finish lesson');
+  await page.getByText('Finished as practice. No new independent coding evidence.').waitFor();
+  const records = await learnerRecords();
+  assert.equal(records.find(item => item.id === repeat.id).completion.independent, false);
+  assert.deepEqual(records.find(item => item.id === completed.id), completed);
+  console.log('Climb prerequisites, two new lessons, graded traces, alternative code, fresh and repeated transfer, archives, drafts, keyboard and reports passed.');
 } finally {
   await browser.close();
 }

@@ -1,7 +1,10 @@
+import type { TraceCheck } from '../learning/trace';
 import type { CoursePack, Exercise, TeachingProse } from './contracts';
 
 export interface LessonSequence {
   learnTitle: string;
+  trace?: TraceCheck;
+  transferTrace?: TraceCheck;
   titleAccent?: string;
   legacy?: { draftExerciseId: string; draftVersion: string };
   predictionCoaching: {
@@ -71,6 +74,15 @@ export function loadCoursePack(pack: CoursePack, sequences: Record<string, Lesso
       const sequence = sequences[lessonId];
       require(sequence && new Set(sequence.buildPlan.options.map(({ id }) => id)).size === sequence.buildPlan.options.length &&
         sequence.buildPlan.options.some(({ id }) => id === sequence.buildPlan.correct), lessonId + ' Build choice');
+      for (const trace of [sequence.trace, sequence.transferTrace]) {
+        if (!trace) continue;
+        require(trace.id.startsWith(lessonId + '.') && version.test(trace.version) && trace.columns.length && trace.rows.length &&
+          new Set(trace.columns).size === trace.columns.length &&
+          new Set(trace.rows.map(row => row.label)).size === trace.rows.length &&
+          trace.rows.every(row => row.expected.length === trace.columns.length && row.expected.every(cell => cell.trim() === cell && cell === cell.toLowerCase() && !!cell)),
+        trace.id + ' trace grid');
+      }
+      require(!sequence.trace || sequence.trace.id !== sequence.transferTrace?.id, lessonId + ' repeated trace ID');
       return { pack: { id: pack.id, version: pack.version }, module, lesson: lesson!, sequence,
         prediction, modification, build, make, transfer };
     });

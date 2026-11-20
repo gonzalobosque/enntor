@@ -15,6 +15,7 @@ export const fixtures = {
   },
   'F01.02': {
     outputs: { 'F01.02.example': '9 7' },
+    traces: { 'F01.02.state-trace': "[str(globals().get('stock', 'unbound')), str(globals().get('before', 'unbound'))]" },
     exercises: {
       modify: fixture('def starting_reading(reading, correction):\n    recorded = reading\n    reading += correction\n    return recorded',
         'def starting_reading(reading, correction):\n    recorded = reading\n    recorded += correction\n    return recorded', 'zero'),
@@ -28,6 +29,14 @@ export const fixtures = {
   },
   'F01.03': {
     outputs: { 'F01.03.example': 'True False True', 'F01.03.index': '1 0' },
+    traces: {
+      'F01.03.reference-trace': "['a' if second is first else 'b', 'yes' if second is first else 'no', 'yes' if second == first else 'no']",
+      'F01.03.handoff-trace': "['yes' if desk is archive else 'no', 'yes' if desk == archive else 'no']",
+    },
+    alternatives: {
+      make: 'def rack_badge(primary, spare, slot):\n    return 2 if slot in (0, 1) else int(primary == spare)',
+      transfer: 'def duplicate_flag(level, first, second, restore):\n    return int(first == level) + int(restore == 0 and second == level)',
+    },
     exercises: {
       modify: fixture('def matching_readings(left, right):\n    a = [left]\n    b = [right]\n    return int(a == b)',
         'def matching_readings(left, right):\n    a = [left]\n    b = [right]\n    return int(a is b)', 'equal'),
@@ -35,8 +44,8 @@ export const fixtures = {
         'def shared_slot(reading, slot):\n    original = [reading]\n    entries = [original, [reading]]\n    return int(entries[slot] == original)', 'other'),
       make: fixture('def rack_badge(primary, spare, slot):\n    first = [primary]\n    slots = [first, first, [spare]]\n    selected = slots[slot]\n    return int(selected == first) + int(selected is first)',
         'def rack_badge(primary, spare, slot):\n    first = [primary]\n    slots = [first, first, [spare]]\n    return 2 * int(slots[slot] == first)', 'equal-distinct'),
-      transfer: fixture('def duplicate_flag(level, replacement, left, right):\n    first = [level]\n    slots = [first, first, [replacement]]\n    a, b = slots[left], slots[right]\n    return int(a == b) - int(a is b)',
-        'def duplicate_flag(level, replacement, left, right):\n    first = [level]\n    slots = [first, first, [replacement]]\n    return int(slots[left] == slots[right])', 'shared'),
+      transfer: fixture('def duplicate_flag(level, first, second, restore):\n    archive = [level]\n    desk = [first]\n    count = int(desk == archive) - int(desk is archive)\n    desk = [[second], archive][restore]\n    return count + int(desk == archive) - int(desk is archive)',
+        'def duplicate_flag(level, first, second, restore):\n    archive = [level]\n    desk = archive if restore else [second]\n    return int([first] == archive) + int(desk == archive)', 'restored'),
     },
   },
 };

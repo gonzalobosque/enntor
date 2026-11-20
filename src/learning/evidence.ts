@@ -1,3 +1,4 @@
+import type { TraceAttempt } from './trace';
 import type { ContentReference, HintLevel } from '../courses/contracts';
 import type { ExecutionResult, GradeResult } from '../execution/contracts';
 
@@ -37,6 +38,7 @@ export interface LessonEvidence {
   buildPlan?: { choice: string; correct: boolean; at: string };
   buildChecks?: { choice: string; correct: boolean; at: string }[];
   transferOpenedAt?: string;
+  traces?: TraceAttempt[];
   sweat?: Sweat;
   prediction?: {
     id: string; exercise: ContentReference; answer: string; committedAt: string;
@@ -46,7 +48,7 @@ export interface LessonEvidence {
   followUps: { id: string; answer: string; expected: number; correct: boolean; at: string }[];
   hints: { exercise: ContentReference; level: HintLevel; at: string }[];
   submissions: Submission[];
-  completion?: { at: string; sweat: Sweat; modifyId: string; buildId?: string; makeId: string; independent: boolean };
+  completion?: { at: string; sweat: Sweat; modifyId: string; buildId?: string; makeId: string; independent: boolean; traceIds?: string[] };
 }
 
 const prefix = 'enntor.evidence.v1.';
@@ -83,8 +85,12 @@ export function writeEvidence(session: LessonEvidence, expected?: LessonEvidence
 
 export const hasSolutionHelp = (hints: HintLevel[]) => hints.some((level) => level === 'H3' || level === 'H4');
 
-export function learningState(session: LessonEvidence, modify: string, make: string, transfer: string, build?: string, freshTransferOnly = false) {
+export function learningState(session: LessonEvidence, modify: string, make: string, transfer: string, build?: string, freshTransferOnly = false, checks?: { trace?: ContentReference; transferTrace?: ContentReference }) {
   const prediction = session.prediction?.runs.find((run) => run.status === 'completed');
+  const pass = (check: ContentReference | undefined) => check && session.traces?.find(item =>
+    item.correct && item.check.id === check.id && item.check.version === check.version);
+  const trace = pass(checks?.trace);
+  const transferTrace = pass(checks?.transferTrace);
   const investigated = !!prediction && (Number(prediction.stdout.trim()) === Number(session.prediction?.answer) ||
     session.followUps.some(({ correct }) => correct));
   const modified = session.submissions.find((item) => item.exercise.id === modify && item.grade?.verdict === 'passed');
@@ -92,11 +98,13 @@ export function learningState(session: LessonEvidence, modify: string, make: str
   const built = !build || (!!session.buildPlan?.correct && !!buildPass);
   const made = session.submissions.filter((item) =>
     [make, transfer].includes(item.exercise.id) && item.grade?.verdict === 'passed');
-  const independent = made.find((item) => item.hints.length === 0 && !item.priorPass && !item.seenBefore && !item.priorSolutionHelp);
-  const qualifying = independent ?? made.find((item) => !hasSolutionHelp(item.hints) && !item.priorSolutionHelp && (!freshTransferOnly || item.exercise.id === make));
-  return { prediction, investigated, modified, built, buildPass, made, independent, qualifying,
-    activitiesComplete: !!(session.learnedAt && investigated && modified && built && made.length),
-    canFinish: !!(session.learnedAt && investigated && modified && built && qualifying) };
+  const eligible = made.filter(item => item.exercise.id !== transfer || !checks?.transferTrace || transferTrace);
+  const independent = eligible.find((item) => item.hints.length === 0 && !item.priorPass && !item.seenBefore && !item.priorSolutionHelp);
+  const qualifying = independent ?? eligible.find((item) => !hasSolutionHelp(item.hints) && !item.priorSolutionHelp &&
+    (!freshTransferOnly || item.exercise.id === make || (item.exercise.id === transfer && (item.seenBefore || item.priorPass))));
+  return { prediction, investigated, trace, transferTrace, modified, built, buildPass, made, independent, qualifying,
+    activitiesComplete: !!(session.learnedAt && investigated && modified && built && (!checks?.trace || trace) && eligible.length),
+    canFinish: !!(session.learnedAt && investigated && modified && built && (!checks?.trace || trace) && qualifying) };
 }
 
 export function finalizeEvidence(session: LessonEvidence, state: ReturnType<typeof learningState>): LessonEvidence {
@@ -105,6 +113,7 @@ export function finalizeEvidence(session: LessonEvidence, state: ReturnType<type
   return { ...session, updatedAt: at, completion: {
     at, sweat: session.sweat ?? null, modifyId: state.modified.id, buildId: state.buildPass?.id,
     makeId: state.qualifying.id, independent: !!state.independent,
+    ...((state.trace || state.transferTrace) ? { traceIds: [state.trace, state.transferTrace].flatMap(item => item ? [item.id] : []) } : {}),
   } };
 }
 

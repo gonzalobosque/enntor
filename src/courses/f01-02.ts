@@ -53,8 +53,22 @@ export const f0102Lesson = foundationLesson({
   ],
   mentorTips: [{ id: id + '.tip', text: 'Draw a row after each assignment. Save which names still point to the earlier value.', sourceRefs: ['P01'] }],
 }, f0102Exercises);
+f0102Lesson.version = '1.1.0';
 
 export const f0102Sequence: LessonSequence = {
+  trace: {
+    id: id + '.state-trace', version: '1.0.0', title: 'Trace both bindings',
+    prompt: 'Record the value each name refers to just after each assignment. Write unbound if a name has not been assigned yet.',
+    source: f0102Exercises[0].starterCode!.split('\n').slice(0, 4).join('\n'),
+    columns: ['stock', 'before'],
+    rows: [
+      { label: 'Line 1', expected: ['12', 'unbound'] }, { label: 'Line 2', expected: ['12', '12'] },
+      { label: 'Line 3', expected: ['7', '12'] }, { label: 'Line 4', expected: ['9', '12'] },
+    ],
+    mistake: { id: 'snapshot-followed-rebinding', message: 'Your last two rows move both names together. Which name appears on the left of each update?',
+      cells: [{ row: 2, column: 0, value: '7' }, { row: 2, column: 1, value: '7' },
+        { row: 3, column: 0, value: '9' }, { row: 3, column: 1, value: '9' }] },
+  },
   learnTitle: 'Trace the name that changes',
   titleAccent: 'reassignment',
   predictionCoaching: {

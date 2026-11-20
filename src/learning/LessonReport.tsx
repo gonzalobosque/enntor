@@ -12,6 +12,9 @@ export function LessonReport({ item, session, reports, onReport, storageAlert, o
   const prediction = session.prediction;
   const actual = prediction?.runs.find((run) => run.status === 'completed')?.stdout.trim();
   const make = session.submissions.find(({ id }) => id === completion?.makeId);
+  const transferPassed = make?.exercise.id === transfer.id;
+  const repeat = transferPassed && (make?.seenBefore || make?.priorPass);
+  const checks = session.traces?.filter(attempt => completion?.traceIds?.includes(attempt.id)) ?? [];
   const assistedMake = make?.exercise.id === transfer.id && session.submissions.find((attempt) =>
     attempt.exercise.id === mainExercise.id && attempt.grade?.verdict === 'passed' &&
     (attempt.hints.length > 0 || attempt.priorSolutionHelp));
@@ -41,10 +44,22 @@ export function LessonReport({ item, session, reports, onReport, storageAlert, o
           <li>Modify passed.</li>
           <li>{completion.buildId ? 'Build passed.' : 'Build was introduced after this session.'}</li>
           {assistedMake && <li>Original Make passed with help{assistedMake.hints.length ? ` (${assistedMake.hints.join(', ')})` : ''}.</li>}
-          <li>{make?.exercise.id === transfer.id ? 'Fresh Make problem passed.' : 'Make passed.'}</li>
+          <li>{transferPassed ? repeat ? 'Previously attempted transfer passed.' : 'Fresh Make problem passed.' : 'Make passed.'}</li>
+          {checks.map(attempt => {
+            const first = session.traces?.find(item => item.check.id === attempt.check.id && item.check.version === attempt.check.version);
+            const title = [sequence.trace, sequence.transferTrace].find(item => item?.id === attempt.check.id &&
+              item.version === attempt.check.version)?.title ?? attempt.check.id;
+            return <li key={attempt.id}>{title}: {attempt.seenBefore ? 'passed on a previously seen trace' :
+              first?.id === attempt.id ? 'passed on the first check' : 'passed after feedback'}.</li>;
+          })}
         </ul>
-        <p><strong>{completion.independent ? make?.exercise.id === transfer.id ? 'Independent skill demonstrated on the transfer problem.' : 'Independent skill demonstrated on this problem.'
-          : make?.hints.length ? 'Make passed with help.' : 'Make passed on a previously seen problem.'}</strong></p>
+        <p><strong>{completion.independent ? sequence.trace
+          ? transferPassed ? 'Independent coding evidence on the transfer problem.' : 'Independent coding evidence on this problem.'
+          : transferPassed ? 'Independent skill demonstrated on the transfer problem.' : 'Independent skill demonstrated on this problem.'
+          : repeat ? 'Finished as practice. No new independent coding evidence.'
+            : make?.hints.length ? 'Make passed with help.' : 'Make passed on a previously seen problem.'}</strong></p>
+        {sequence.trace && <p>{checks.length ? 'Public code checks measure returned results. Trace checks record reasoning about the names and values separately.'
+          : 'This earlier edition did not record trace evidence.'}</p>}
         {make?.hints.length ? <p>Recorded help: {make.hints.join(', ')}. {hasSolutionHelp(make.hints) ? 'Includes implementation help.' : 'Conceptual help.'}</p> : null}
       </section>
       {(prediction?.hypothesis || failed.length > 0 || followUpFailures.length > 0 || buildMistakes.length > 0 ||

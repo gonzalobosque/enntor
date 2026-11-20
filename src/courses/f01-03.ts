@@ -26,7 +26,7 @@ export const f0103Exercises = [
     key: 'make', kind: 'write', title: 'Classify a rack slot', entryPoint: 'rack_badge',
     prompt: ['A rack records a primary sample as a one-item list containing ', symbol('primary'), '. Slots 0 and 1 refer to that same list. Slot 2 refers to a separately created one-item list containing ',
       symbol('spare'), '. Define ', call('rack_badge()'), ' with signed integer readings primary and spare, followed by integer ',
-      symbol('slot'), ' (0, 1, or 2). Return 2 for the primary object, 1 for a separate object with equal contents, and 0 otherwise. For (9, 9, 2), return 1. Use both a contents comparison and an identity comparison to practise the distinction.'],
+      symbol('slot'), ' (0, 1, or 2). Return 2 for the primary object, 1 for a separate object with equal contents, and 0 otherwise. For (9, 9, 2), return 1. The grader checks the badge values. The trace activity checks your reasoning about references.'],
     hints: ladder('Draw two list objects and three arrows from the slots. Which arrows lead to the same object?',
       'For these lists, sharing an object guarantees equal contents. Can two separate checks distinguish the three cases?',
       'The two comparison results can contribute one point each. Slot 2 in the example has equal contents but a different object, so only one check contributes.', rackSolution),
@@ -34,13 +34,16 @@ export const f0103Exercises = [
       ['different', [9, 8, 2], 0], ['zero-distinct', [0, 0, 2], 1], ['negative-distinct', [-3, 3, 2], 0]],
   }),
   task(id, concept, {
-    key: 'make-transfer', kind: 'transfer', title: 'Flag a duplicate without counting aliases', entryPoint: 'duplicate_flag',
-    prompt: 'A report has three slots. Slots 0 and 1 share one list containing level. Slot 2 holds a new list containing replacement. Define duplicate_flag(level, replacement, left, right). The readings are signed integers and both slot indices are 0, 1 or 2. Compare the two selected lists by contents and identity. Return integer 1 only when the two lists are separate objects with equal contents, or 0 otherwise. For (5, 5, 0, 1) return 0. For (5, 5, 2, 1) return 1.',
+    key: 'make-transfer', kind: 'transfer', title: 'Count duplicates across two handoffs', entryPoint: 'duplicate_flag',
+    prompt: 'An archive keeps a one-item list containing level. The desk first replaces its reading with a new one-item list containing first. At the next update it either reconnects to the archived list (restore is 1) or receives another new one-item list containing second (restore is 0). Define duplicate_flag(level, first, second, restore). The first three inputs are signed integers and restore is 0 or 1. At each of the two updates, count one duplicate only if the desk and archive hold equal contents in separate objects. Return the total count as an integer. For (5, 5, 5, 0), return 2. For (5, 5, 5, 1), return 1 because the desk reconnects at the second update.',
     hints: [],
-    cases: [['shared', [5, 5, 0, 1], 0], ['other-shared', [5, 5, 2, 2], 0], ['equal-forward', [5, 5, 1, 2], 1],
-      ['equal-reverse', [5, 5, 2, 1], 1], ['unequal', [5, 8, 2, 0], 0], ['zero', [0, 0, 0, 2], 1]],
+    cases: [['two-duplicates', [5, 5, 5, 0], 2], ['restored', [5, 5, 5, 1], 1], ['first-only', [5, 5, 2, 0], 1],
+      ['second-only', [5, 2, 5, 0], 1], ['no-duplicates', [5, 2, 4, 0], 0], ['restored-after-change', [0, -1, 0, 1], 0]],
   }),
 ];
+
+f0103Exercises[3].version = '1.1.0';
+f0103Exercises[4].version = '1.1.0';
 
 export const f0103Lesson = foundationLesson({
   id, title: 'Identity and equality', prerequisites: ['F01.02'],
@@ -56,8 +59,27 @@ export const f0103Lesson = foundationLesson({
   ],
   mentorTips: [{ id: id + '.tip', text: 'Draw labels with arrows to objects. Compare the arrows for identity and the entries for equality.', sourceRefs: ['P01'] }],
 }, f0103Exercises);
+f0103Lesson.version = '1.1.0';
 
 export const f0103Sequence: LessonSequence = {
+  trace: {
+    id: id + '.reference-trace', version: '1.0.0', title: 'Trace references and contents',
+    prompt: 'Call the list created on line 1 A and the list created on line 3 B. For each row, name the object second refers to. Then answer yes or no for second is first and second == first.',
+    source: 'first = [3]\nsecond = first\nsecond = [3]\nsecond = first',
+    columns: ['second', 'Same object?', 'Equal contents?'],
+    rows: [{ label: 'Line 2', expected: ['a', 'yes', 'yes'] }, { label: 'Line 3', expected: ['b', 'no', 'yes'] },
+      { label: 'Line 4', expected: ['a', 'yes', 'yes'] }],
+    mistake: { id: 'equal-implies-identical', message: 'Your line 3 comparison treats the equal entry as the same object. Check where the list was created.',
+      cells: [{ row: 1, column: 0, value: 'b' }, { row: 1, column: 1, value: 'yes' }, { row: 1, column: 2, value: 'yes' }] },
+  },
+  transferTrace: {
+    id: id + '.handoff-trace', version: '1.0.0', title: 'Trace the handoff',
+    prompt: 'Compare desk with archive after each indicated line. Answer yes or no. Follow both names when archive itself is rebound.',
+    source: 'archive = [8]\ndesk = archive\narchive = [8]\nbackup = archive\ndesk = backup\ndesk = [4]',
+    columns: ['Same object?', 'Equal contents?'],
+    rows: [{ label: 'Line 3', expected: ['no', 'yes'] }, { label: 'Line 5', expected: ['yes', 'yes'] },
+      { label: 'Line 6', expected: ['no', 'no'] }],
+  },
   learnTitle: 'Two questions about the same pair',
   titleAccent: 'equality',
   predictionCoaching: {

@@ -72,6 +72,18 @@ export async function validateContent(lessonIds = []) {
       checkNames(coaching.modifyFeedback, allowed(tasks.modification.starterCode), id + ' Modify feedback');
       checkNames(sequence.buildPlan.prompt, allowed(tasks.build.starterCode), id + ' Build plan');
       checkNames(sequence.buildPlan.syntax, allowed(tasks.build.starterCode), id + ' Build syntax');
+      const checks = [sequence.trace, sequence.transferTrace].filter(Boolean);
+      assert.deepEqual(Object.keys(manifest.traces ?? {}).sort(), checks.map(check => check.id).sort(), id + ' trace fixtures');
+      for (const check of checks) {
+        const lines = check.source.split('\n');
+        for (const { label, expected } of check.rows) {
+          const line = Number(/^Line (\d+)$/.exec(label)?.[1]);
+          assert(line > 0 && line <= lines.length, check.id + ' trace line');
+          const actual = run(lines.slice(0, line).join('\n'),
+            `__import__('json').dumps(${manifest.traces[check.id]})`);
+          assert.deepEqual(JSON.parse(actual), expected, check.id + ' ' + label);
+        }
+      }
       const results = [];
       for (const [role, key] of [['modification', 'modify'], ['build', 'build'], ['make', 'make'], ['transfer', 'transfer']]) {
         const exercise = tasks[role];
@@ -92,6 +104,8 @@ export async function validateContent(lessonIds = []) {
         assert(cases.some(({ id }) => id === misses), exercise.id + ' missing discriminating case');
         for (const { id, input, expected } of cases) {
           assert.equal(execute(reference, input), JSON.stringify(expected), exercise.id + ' reference · ' + id);
+          const alternative = manifest.alternatives?.[key];
+          if (alternative) assert.equal(execute(alternative, input), JSON.stringify(expected), exercise.id + ' alternative · ' + id);
           const negative = execute(wrong, input);
           if (id === misses) assert.notEqual(negative, JSON.stringify(expected), exercise.id + ' wrong solution survived');
         }
@@ -117,7 +131,7 @@ export async function validateContent(lessonIds = []) {
       }
       return [`${id} ${title} · lesson v${version}, pack v${coursePack.version}`,
         `  Curriculum v1.1 §5 · ${lesson.prerequisites.join(', ') || 'entry lesson'}`,
-        `  ${worked.length} worked example(s), prediction and follow-up executed; tagged symbols checked`, ...results,
+        `  ${worked.length} worked example(s), prediction, follow-up and ${checks.length} trace grid(s) executed; tagged symbols checked`, ...results,
         '  Editorial review still needed for clarity, scaffold distance, hint disclosure and novelty.'].join('\n');
     });
   } finally {

@@ -43,9 +43,43 @@ test('new lessons require fresh unaided transfer after solution help', async () 
       submissions: [{ ...transfer, exercise: { id: 'modify' } }, { ...transfer, exercise: { id: 'build' } }, make] };
     const evaluate = (...submissions) => learningState({ ...evidence, submissions: [...evidence.submissions, ...submissions] }, 'modify', 'make', 'transfer', 'build', true);
     assert.equal(evaluate().canFinish, false);
-    assert.equal(evaluate({ ...transfer, seenBefore: true }).canFinish, false);
+    const repeated = evaluate({ ...transfer, seenBefore: true });
+    assert.equal(repeated.canFinish, true);
+    assert.equal(repeated.independent, undefined);
     assert.equal(evaluate({ ...transfer, hints: ['H0'] }).canFinish, false);
     assert.equal(evaluate(transfer).independent, transfer);
+  } finally {
+    await vite.close();
+  }
+});
+
+test('state and identity reasoning are checked directly and versioned independently of code verdicts', async () => {
+  const vite = await createServer({ configFile: false, optimizeDeps: { noDiscovery: true },
+    server: { middlewareMode: true, ws: false } });
+  try {
+    const { course } = await vite.ssrLoadModule('/src/courses/course.ts');
+    const { gradeTrace } = await vite.ssrLoadModule('/src/learning/trace.ts');
+    const { learningState, finalizeEvidence } = await vite.ssrLoadModule('/src/learning/evidence.ts');
+    const stateCheck = course[1].sequence.trace;
+    const mistake = gradeTrace(stateCheck, [['12','UNBOUND'], ['12','12'], ['7','7'], ['9','9']]);
+    assert.equal(mistake.pattern, 'snapshot-followed-rebinding');
+    assert.deepEqual(mistake.missed, [{ row: 2, column: 1 }, { row: 3, column: 1 }]);
+    assert.equal(gradeTrace(stateCheck, [['12','unbound'], ['12','12'], ['7','12'], ['9','12']]).correct, true);
+
+    const { trace, transferTrace } = course[2].sequence;
+    assert.equal(gradeTrace(trace, [['a','yes','yes'], ['b','yes','yes'], ['a','yes','yes']]).pattern, 'equal-implies-identical');
+    const attempt = (id, hints = []) => ({ id, exercise: { id }, grade: { verdict: 'passed' }, hints });
+    const direct = { id: 'direct', check: trace, ...gradeTrace(trace, trace.rows.map(row => row.expected)) };
+    const handoff = { id: 'handoff', check: transferTrace, ...gradeTrace(transferTrace, transferTrace.rows.map(row => row.expected)) };
+    const session = { learnedAt: 'time', prediction: { answer: '1', runs: [{ status: 'completed', stdout: '1' }] },
+      buildPlan: { correct: true }, submissions: [attempt('modify'), attempt('build'), attempt('make', ['H4']), attempt('transfer')] };
+    const evaluate = record => learningState(record, 'modify', 'make', 'transfer', 'build', true, { trace, transferTrace });
+    const obsolete = { ...direct, check: { ...trace, version: '0.9.0' } };
+    assert.equal(evaluate({ ...session, traces: [obsolete, handoff] }).canFinish, false);
+    assert.equal(evaluate({ ...session, traces: [direct] }).canFinish, false);
+    const completed = { ...session, traces: [direct, handoff] };
+    assert.equal(evaluate(completed).canFinish, true);
+    assert.deepEqual(finalizeEvidence(completed, evaluate(completed)).completion.traceIds, ['direct', 'handoff']);
   } finally {
     await vite.close();
   }
