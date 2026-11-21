@@ -46,9 +46,9 @@ export function Console({ runs, printedLabel = 'stdout' }: { runs: ExecutionResu
   );
 }
 
-export function ExerciseEditor({ stage, exercise, draftKey, earlierDraftKey, hints, priorPass, coach, onHint, onAttempt, onBusy, onDraftFailure, onEdit }: {
+export function ExerciseEditor({ stage, exercise, draftKey, earlierDraftKey, hints, allowAssistedFinish, priorPass, coach, onHint, onAttempt, onBusy, onDraftFailure, onEdit }: {
   stage: 'Modify' | 'Build' | 'Make' | 'Practice'; exercise: Exercise; draftKey: string; earlierDraftKey?: string; hints: HintLevel[];
-  priorPass: boolean; coach?: (attempt: Submission) => Promise<CheckCoaching | undefined>; onHint: (level: HintLevel) => void;
+  priorPass: boolean; allowAssistedFinish?: boolean; coach?: (attempt: Submission) => Promise<CheckCoaching | undefined>; onHint: (level: HintLevel) => void;
   onAttempt: (attempt: Submission) => void; onBusy: (value: boolean) => void; onDraftFailure: (value: boolean) => void; onEdit?: () => void;
 }) {
   const initialCode = exercise.starterCode!;
@@ -152,7 +152,7 @@ export function ExerciseEditor({ stage, exercise, draftKey, earlierDraftKey, hin
           {stage !== 'Build' && <h2 className="pilot-stage-heading">{stage}</h2>}
           <h3 className="pilot-exercise-heading" id={`${exercise.id}-heading`}>{exercise.title}</h3>
           <p className="exercise-prompt"><TeachingProseText content={exercise.prompt} /></p>
-          <ExerciseHints hints={exercise.hints} revealed={hints} busy={busy} onReveal={onHint} />
+          <ExerciseHints allowAssistedFinish={allowAssistedFinish} hints={exercise.hints} revealed={hints} busy={busy} onReveal={onHint} />
           <p className="python-editor-label">{stage} Python code</p>
           <Suspense fallback={<p role="status">Loading the Python editor…</p>}>
             <PythonEditor id={`${exercise.id}-editor`} label={`${stage} Python code`}

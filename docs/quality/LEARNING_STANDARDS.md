@@ -60,3 +60,23 @@ Automate schema, stable ID and prerequisite graph checks, semantic references, o
 During editorial review, try each planning question without looking at the answer key or coming coding prompt. Check that all premises appear before the choices, the choices are distinguishable by the stated rule, and the example agrees with an executable public case. Ask learners to apply the rule rather than pick from unexplained labels. Inspect what each hint reveals, whether Make is doable at that point in the course, and whether a reasonable alternate interpretation or correct implementation would be rejected.
 
 Assess these dimensions separately: correctness, source alignment, teaching clarity, scaffold gradient, independent transfer, assignment precision, help and feedback, assessment validity, evidence honesty, and retention/cumulative use. Use examples and severity. A suggested 0–4 rubric and a 3/4 target for core dimensions is [a proposal](OPEN_DECISIONS.md#authoring-and-review-calibration). Any critical error, solution leak or false independence claim blocks release regardless of average. See [release gates](RELEASE_GATES.md).
+
+
+## First-read exercise review
+
+Read the learner-facing task from a blank editor with only the preceding activities available. Ask another reviewer to paraphrase the contract after one reading and work one example without the solution.
+
+| Review question | What to check |
+| --- | --- |
+| Are all premises introduced? | State the rule before asking for a choice. Identify what happens first, which values are retained, and which must be combined. |
+| Are output and response format explicit? | Name the required type, units, bounds and exact tokens. Use a choice control for a fixed vocabulary when typing is outside the objective. |
+| Are labels, identifiers and values distinguishable? | Identify each representation and say which belongs in the answer. In F01.03, **A** and **B** identify different lists even when both contain `3`. The name `second` can refer to either. |
+| Are domain conventions introduced? | In F01.02, explain that a positive offset increases the reading and a negative one decreases it. Give the chronological example before expecting the learner to reason about the score. |
+| Can a careful reader take a different interpretation? | Write down a plausible alternative and check the visual labels, empty fields and examples against it. If both interpretations fit, clarify the contract before grading. |
+| Does the scenario serve the objective? | Give the reason to record and combine measurements. In F01.02, the starting charge determines the measurements, while the report combines only the two actual checkpoint readings. |
+| Does the statement preserve independent construction? | Specify observable behavior. Keep the variable names and solution structure open unless the scaffold is teaching one explicitly. |
+| Does the assessment measure the intended skill? | Accept equivalent correct code. A format mismatch is evidence about the response interface, not evidence of a conceptual error. Review the wording before interpreting the response. |
+
+Use semantic spans for identifiers, operators, exact response tokens, object labels and decisive conditions. In trace feedback, distinguish invalid formats from a valid answer that contradicts the code. Withdraw an old verdict as soon as the answer changes. Owner trial observations inform design as qualitative evidence from one session. They do not generalize to difficulty scores or diagnoses.
+
+A final MAKE exercise is required when the original Make pass depends on solution-level help. Optional reinforcement has a different label. Offer conceptual and worked help by request on the final exercise as well. After help, require a genuine passing check and all applicable trace gates to finish as practice. Reserve independent credit for an eligible unaided pass on fresh work.

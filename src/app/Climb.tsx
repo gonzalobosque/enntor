@@ -34,7 +34,7 @@ export function Climb({ route }: { route?: { id: string; results: boolean } }) {
         const { lesson } = entry;
         const missing = unmetPrerequisites(entry, coursePack, completed);
         const done = completed.has(lesson.id);
-        const saved = history.some((record) => record.lesson.id === lesson.id && record.lesson.version === lesson.version);
+        const saved = history.some((record) => record.lesson.id === lesson.id && (record.lesson.version === lesson.version || !!entry.sequence.resumeFrom?.[record.lesson.version]));
         return <li key={lesson.id}>
           <h3 className="pilot-exercise-heading">{lesson.id} · {lesson.title}</h3>
           <p className="muted">{done ? 'Completed' : missing.length ? `Locked · finish ${missing.join(', ')} first` : saved ? 'In progress' : 'Available'} · {lesson.estimatedMinutes} min</p>

@@ -247,4 +247,7 @@ h1 span { color: var(--accent); }
 .climb-lessons { display: grid; gap: 1.25rem; padding-inline-start: 1.5rem; }
 
 .trace-table { table-layout: fixed; width: 100%; border-spacing: .25rem; text-align: left; overflow-wrap: anywhere; }
-.trace-table input { width: 100%; padding-inline: .35rem; }
+.trace-table input, .trace-table select { width: 100%; padding-inline: .35rem; }
+.trace-table select { min-height: 2.75rem; color: var(--text); background: var(--panel); font: inherit; }
+.teaching-label { color: var(--teaching-code-accent); }
+.teaching-token, .teaching-operator { font-weight: 650; }

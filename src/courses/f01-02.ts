@@ -1,5 +1,5 @@
 import type { LessonSequence } from './load-course-pack';
-import { call, code, foundationLesson, ladder, prediction, symbol, task } from './python-foundation';
+import { call, code, emphasis, operator, token, foundationLesson, ladder, prediction, symbol, task } from './python-foundation';
 
 const id = 'F01.02';
 const concept = 'python.rebinding';
@@ -8,7 +8,9 @@ export const f0102Exercises = [
   prediction(id, concept, 'stock = 12\nbefore = stock\nstock = stock - 5\nstock += 2\nprint(before - stock)', 3),
   task(id, concept, {
     key: 'modify', revision: '1.1.0', kind: 'modify', title: 'Keep the starting reading', entryPoint: 'starting_reading',
-    prompt: 'A logger applies a correction but must report the reading it had before that correction. Update starting_reading(reading, correction). The first input is the original reading and the second is the signed adjustment. Both are integers. Return the original reading as an integer. With a reading of 6 and a correction of −2, the live reading becomes 4 and the function returns 6.',
+    prompt: ['A logger applies a correction but must report the reading ', emphasis('before the correction'), '. Update ',
+      call('starting_reading()'), '. Both inputs are integers: ', symbol('reading'), ' is the original reading and ',
+      symbol('correction'), ' is the signed adjustment. Return the original reading as an integer. With a reading of 6 and a correction of −2, the live reading becomes 4 and the function returns 6.'],
     starter: 'def starting_reading(reading, correction):\n    recorded = reading\n    reading += correction\n    return reading',
     hints: [{ level: 'H0', text: ['Trace a nonzero correction. Which name changes its binding and which name keeps its starting value?'] }],
     cases: [['decrease', [6, -2], 6], ['increase', [3, 5], 3], ['none', [10, 0], 10],
@@ -16,19 +18,19 @@ export const f0102Exercises = [
   }),
   task(id, concept, {
     key: 'build', kind: 'write', title: 'Score a checkpoint', entryPoint: 'checkpoint_difference',
-    prompt: 'Complete checkpoint_difference(start, change). The starter takes a snapshot and updates the live value once. The score is twice the updated reading minus the earlier snapshot. Return the integer score. Inputs are signed integers. For (8, −3), the updated reading is 5, so return 2.',
+    prompt: ['Complete ', call('checkpoint_difference()'), '. The starter takes a snapshot of ', symbol('start'), ' and updates the live reading by ',
+      symbol('change'), '. Both inputs are signed integers. The score is ', emphasis('twice the updated reading minus the earlier snapshot'), '. Return the integer score. For (8, −3), the updated reading is 5, so return 2.'],
     starter: 'def checkpoint_difference(start, change):\n    checkpoint = start\n    start += change\n    pass  # Return the difference here.',
     hints: [{ level: 'H0', text: 'Which name refers to the earlier checkpoint after the update?' }],
     cases: [['decrease', [8, -3], 2], ['increase', [2, 6], 14], ['none', [7, 0], 7],
       ['zero', [0, -5], -10], ['negative', [-5, 2], -1], ['cross', [-2, 9], 16]],
   }),
   task(id, concept, {
-    key: 'make', revision: '1.1.0', kind: 'write', title: 'Reconcile two battery readings', entryPoint: 'battery_after',
-    prompt: ['Write ', call('battery_after()'), ' with three integer inputs, in this order:\n', symbol('start'),
-      ' is the initial charge. ', symbol('used'), ' is how much the test consumes. ', symbol('restored'),
-      ' is how much the top-up adds. All three inputs are nonnegative, and the test never consumes more than the initial charge.\n\n',
-      'The initial charge is not a recorded reading. Reading 1 is taken after the test. Reading 2 is taken after the top-up. Return the sum of those two readings as an integer.\n\n',
-      'Example: start at 5 → test uses 2 → record 3 → top-up adds 1 → record 4. Return 7.'],
+    key: 'make', revision: '1.2.0', kind: 'write', title: 'Add the two battery measurements', entryPoint: 'battery_after',
+    prompt: ['A technician measures the battery’s charge after a test and again after a top-up. The lab compares runs using a single score made from two charge measurements. Use the starting charge to work out the measurements. It is ', emphasis('not included'), ' in the score.\n\n',
+      emphasis('Measurement 1'), ' is the charge after the test uses power. ', emphasis('Measurement 2'), ' is the charge after the top-up. The report adds these two measurements so every run contributes one number.\n\n',
+      'Define ', call('battery_after()'), ' with ', symbol('start'), ' (starting charge), ', symbol('used'), ' (charge consumed in the test), and ', symbol('restored'), ' (charge added by the top-up), in that order. All are nonnegative integers and the test cannot use more than the starting charge. Return the score as an integer.\n\n',
+      'Example: start at 5. The test uses 2, so the first measurement is 3. The top-up adds 1, so the second is 4. Return 7.'],
     coaching: { unusedCalculationQuestion: 'Which of the two recorded measurements is missing from the return value?' },
     hints: ladder('Mark the two moments at which a reading is recorded. Does the top-up affect both?',
       'Keep one name for the first recorded charge and another for the charge that changes.',
@@ -37,9 +39,14 @@ export const f0102Exercises = [
       ['no-use', [8, 0, 3], 19], ['all-zero', [0, 0, 0], 0], ['empty-start', [0, 0, 4], 4]],
   }),
   task(id, concept, {
-    key: 'make-transfer', revision: '1.1.0', kind: 'transfer', title: 'Score a calibration run', entryPoint: 'calibration_score',
-    prompt: 'Define calibration_score(initial, first_offset, second_offset). All three inputs are signed integers. initial is the starting reading.\n\nApply first_offset to reach the checkpoint. Apply second_offset to the checkpoint reading to reach the final reading. Return the integer score: twice the checkpoint reading minus the final reading.\n\nExample: (7, −2, 3) starts at 7, reaches checkpoint 5, then finishes at 8. The score is 2.',
-    hints: [],
+    key: 'make-transfer', revision: '1.2.0', kind: 'transfer', title: 'Score two meter adjustments', entryPoint: 'calibration_score',
+    prompt: ['A technician adjusts a meter twice and keeps the reading after the first adjustment as a checkpoint. Each ', emphasis('offset'), ' is a signed change: a positive value increases the current reading, a negative value decreases it, and zero leaves it unchanged.\n\n',
+      'Start at ', symbol('initial'), '. After ', symbol('first_offset'), ', record the checkpoint. Apply ', symbol('second_offset'), ' to that reading to reach the final reading. Checkpoint accuracy has extra weight in the score: return twice the checkpoint reading minus the final reading.\n\n',
+      'Define ', call('calibration_score()'), ' with those three signed integer inputs in that order. Return an integer. Example: (7, −2, 3) takes the meter from 7 to checkpoint 5, then to final reading 8. Twice 5 minus 8 gives a score of 2.'],
+    hints: ladder('Identify the two readings that the score uses. The starting reading is only where the first adjustment begins.',
+      'On paper, write the checkpoint before applying the second change. Which of the two values is doubled?',
+      'The first adjustment moves 7 to 5. The next moves 5 to 8, but the checkpoint is still 5. The score uses both 5 and 8.',
+      'def calibration_score(initial, first_offset, second_offset):\n    checkpoint = initial + first_offset\n    final_reading = checkpoint + second_offset\n    return 2 * checkpoint - final_reading'),
     cases: [['ordinary', [7, -2, 3], 2], ['equal', [3, 2, 0], 5], ['negative', [-4, 1, 5], -8],
       ['zero-checkpoint', [6, -6, -3], 3], ['all-zero', [0, 0, 0], 0], ['cross', [-3, 6, -2], 5]],
   }),
@@ -56,14 +63,15 @@ export const f0102Lesson = foundationLesson({
   ],
   mentorTips: [{ id: id + '.tip', text: 'Draw a row after each assignment. Save which names still point to the earlier value.', sourceRefs: ['P01'] }],
 }, f0102Exercises);
-f0102Lesson.version = '1.2.0';
+f0102Lesson.version = '1.3.0';
 
 export const f0102Sequence: LessonSequence = {
   draftsFromLesson: '1.1.0',
-  equivalentExerciseVersions: { [id + '.modify']: ['1.0.0'], [id + '.make']: ['1.0.0'], [id + '.make-transfer']: ['1.0.0'] },
+  resumeFrom: { '1.2.0': { [id + '.make']: '1.1.0', [id + '.make-transfer']: '1.1.0' } },
+  equivalentExerciseVersions: { [id + '.modify']: ['1.0.0'], [id + '.make']: ['1.1.0', '1.0.0'], [id + '.make-transfer']: ['1.1.0', '1.0.0'] },
   trace: {
     id: id + '.state-trace', version: '1.0.0', title: 'Trace both bindings',
-    prompt: 'Record the value each name refers to just after each assignment. Write unbound if a name has not been assigned yet.',
+    prompt: ['Record the value each name refers to ', emphasis('just after'), ' each assignment. Enter ', token('unbound'), ' if a name has not been assigned yet.'],
     source: f0102Exercises[0].starterCode!.split('\n').slice(0, 4).join('\n'),
     columns: ['stock', 'before'],
     rows: [
@@ -72,7 +80,7 @@ export const f0102Sequence: LessonSequence = {
     ],
     help: {
       concept: 'Give each name its own column. A change in one column does not automatically change the other.',
-      guidance: 'Read the assignment from right to left, then move only the name on the left. On line 4, use the value of stock from line 3.',
+      guidance: ['Evaluate the expression on the right, then move only the name on the left. On line 4, ', operator('+='), ' uses the value of ', symbol('stock'), ' from line 3.'],
       worked: [
         'Only stock has been assigned, so before has no binding yet.',
         'The assignment gives before the value currently bound to stock.',

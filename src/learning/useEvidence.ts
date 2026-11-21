@@ -9,11 +9,11 @@ function newEvidence(pack: ContentReference, lesson: ContentReference, legacyDra
     startedAt: at, updatedAt: at, followUps: [], hints: [], submissions: [] };
 }
 
-export function useEvidence(pack: ContentReference, lesson: ContentReference, legacyDrafts: boolean) {
+export function useEvidence(pack: ContentReference, lesson: ContentReference, legacyDrafts: boolean, resumableVersions: string[] = []) {
   const [initial] = useState(() => {
     try {
       const history = readEvidence(lesson, pack.id);
-      const current = history.find((item) => item.lesson.version === lesson.version || item.completion);
+      const current = history.find((item) => item.lesson.version === lesson.version || resumableVersions.includes(item.lesson.version) || item.completion);
       return { history, current, error: false };
     } catch {
       return { history: [], current: undefined, error: true };

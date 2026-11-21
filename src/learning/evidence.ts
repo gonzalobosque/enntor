@@ -22,6 +22,7 @@ export interface Submission {
   priorSolutionHelp?: boolean;
   coaching?: CheckCoaching & { shownAt: string };
   coachedBefore?: boolean;
+  presentationEdition?: string;
   corrects?: string[];
   startedAt: string;
   finishedAt?: string;
@@ -52,7 +53,7 @@ export interface LessonEvidence {
     reasoning?: 'confirmed' | 'rejected';
   };
   followUps: { id: string; answer: string; expected: number; correct: boolean; at: string }[];
-  hints: { exercise: ContentReference; level: HintLevel; at: string }[];
+  hints: { exercise: ContentReference; level: HintLevel; at: string; presentationEdition?: string }[];
   submissions: Submission[];
   completion?: { at: string; sweat: Sweat; modifyId: string; buildId?: string; makeId: string; independent: boolean; traceIds?: string[] };
 }
@@ -97,7 +98,7 @@ export function hasSeenExercise(history: LessonEvidence[], exercise: ContentRefe
 
 export const hasSolutionHelp = (hints: HintLevel[]) => hints.some((level) => level === 'H3' || level === 'H4');
 
-export function learningState(session: LessonEvidence, modify: string, make: string, transfer: string, build?: string, freshTransferOnly = false, checks?: { trace?: ContentReference; transferTrace?: ContentReference }) {
+export function learningState(session: LessonEvidence, modify: string, make: string, transfer: string, build?: string, allowAssistedTransfer = false, checks?: { trace?: ContentReference; transferTrace?: ContentReference }) {
   const prediction = session.prediction?.runs.find((run) => run.status === 'completed');
   const pass = (check: ContentReference | undefined) => check && session.traces?.find(item =>
     item.correct && item.check.id === check.id && item.check.version === check.version);
@@ -112,8 +113,9 @@ export function learningState(session: LessonEvidence, modify: string, make: str
     [make, transfer].includes(item.exercise.id) && item.grade?.verdict === 'passed');
   const eligible = made.filter(item => item.exercise.id !== transfer || !checks?.transferTrace || transferTrace);
   const independent = eligible.find((item) => item.hints.length === 0 && !item.priorPass && !item.seenBefore && !item.priorSolutionHelp && !item.coachedBefore);
-  const qualifying = independent ?? eligible.find((item) => !hasSolutionHelp(item.hints) && !item.priorSolutionHelp &&
-    (!freshTransferOnly || item.exercise.id === make || (item.exercise.id === transfer && (item.seenBefore || item.priorPass || item.coachedBefore))));
+  const qualifying = independent ?? eligible.find(item =>
+    (item.exercise.id === transfer && allowAssistedTransfer) ||
+    (!hasSolutionHelp(item.hints) && !item.priorSolutionHelp));
   return { prediction, investigated, trace, transferTrace, modified, built, buildPass, made, independent, qualifying,
     activitiesComplete: !!(session.learnedAt && investigated && modified && built && (!checks?.trace || trace) && eligible.length),
     canFinish: !!(session.learnedAt && investigated && modified && built && (!checks?.trace || trace) && qualifying) };

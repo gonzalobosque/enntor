@@ -31,7 +31,7 @@ test('pack loader orders prerequisites and rejects cross-lesson or duplicate act
   }
 });
 
-test('new lessons require fresh unaided transfer after solution help', async () => {
+test('solution help on final MAKE allows a graded practice pass without independent credit', async () => {
   const vite = await createServer({ configFile: false, optimizeDeps: { noDiscovery: true },
     server: { middlewareMode: true, ws: false } });
   try {
@@ -46,7 +46,12 @@ test('new lessons require fresh unaided transfer after solution help', async () 
     const repeated = evaluate({ ...transfer, seenBefore: true });
     assert.equal(repeated.canFinish, true);
     assert.equal(repeated.independent, undefined);
-    assert.equal(evaluate({ ...transfer, hints: ['H0'] }).canFinish, false);
+    for (const level of ['H0', 'H4']) {
+      const helped = evaluate({ ...transfer, hints: [level] });
+      assert.equal(helped.canFinish, true);
+      assert.equal(helped.independent, undefined);
+      assert.equal(evaluate({ ...transfer, hints: [level], grade: { verdict: 'failed' } }).canFinish, false);
+    }
     assert.equal(evaluate(transfer).independent, transfer);
   } finally {
     await vite.close();
@@ -70,6 +75,12 @@ test('state and identity reasoning are checked directly and versioned independen
     assert.equal(gradeTrace(stateCheck, [['12','unbound'], ['12','12'], ['7','12'], ['9','12']]).correct, true);
 
     const { trace, transferTrace } = course[2].sequence;
+    for (const wrongType of ['[3]', '3', 'first']) {
+      const result = gradeTrace(trace, [[wrongType,'yes','yes'], ['b','yes','yes'], ['a','yes','yes']]);
+      assert.deepEqual(result.format, [{ row: 0, column: 0 }]);
+      assert.equal(result.pattern, undefined);
+      assert.equal(result.correct, false);
+    }
     const { id, version } = course[2].transfer;
     const openedOnly = [{ openedTransfer: { id, version }, submissions: [], hints: [] }];
     assert.equal(hasSeenExercise(openedOnly, { id, version }), true);

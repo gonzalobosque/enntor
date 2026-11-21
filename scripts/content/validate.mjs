@@ -75,6 +75,9 @@ export async function validateContent(lessonIds = []) {
       const checks = [sequence.trace, sequence.transferTrace].filter(Boolean);
       assert.deepEqual(Object.keys(manifest.traces ?? {}).sort(), checks.map(check => check.id).sort(), id + ' trace fixtures');
       for (const check of checks) {
+        for (const prose of [check.prompt, check.help.concept, check.help.guidance, ...check.help.worked, check.mistake?.message]) {
+          if (prose) checkNames(prose, allowed(check.source), check.id + ' trace wording');
+        }
         const lines = check.source.split('\n');
         for (const { label, expected } of check.rows) {
           const line = Number(/^Line (\d+)$/.exec(label)?.[1]);
@@ -130,7 +133,7 @@ export async function validateContent(lessonIds = []) {
           assert(cases.length >= 6, exercise.id + ' assessment cases');
         }
         if (role === 'transfer') {
-          assert.equal(levels.length, 0);
+          assert.deepEqual(levels, ['H0', 'H1', 'H4'], exercise.id + ' final MAKE assistance');
           assert.notEqual(entryPoint, tasks.make.execution.entryPoint, exercise.id + ' distinct signature');
         }
         results.push(`  ${key}: ${cases.length} cases, starter fails, reference passes, wrong solution fails ${misses}${levels.length ? '; hints ' + levels.join('/') : ''}`);

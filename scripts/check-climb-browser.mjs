@@ -48,9 +48,13 @@ try {
   async function checkTrace(name, answers) {
     const area = section(name);
     await area.waitFor();
-    const fields = area.getByRole('textbox');
+    const fields = area.locator('table input, table select');
     assert.equal(await fields.count(), answers.length);
-    for (let i = 0; i < answers.length; i++) await fields.nth(i).fill(answers[i]);
+    for (let i = 0; i < answers.length; i++) {
+      const field = fields.nth(i);
+      if (await field.evaluate(node => node.tagName === 'SELECT')) await field.selectOption({ label: answers[i] });
+      else await field.fill(answers[i]);
+    }
     await press('Check trace', area);
     return area;
   }
@@ -140,11 +144,11 @@ try {
   assert.equal(await section(/^Build ·/).count(), 0);
   await page.getByLabel('Double 5. The score is 2.').check();
   await grade(section(/^Build ·/), 'def checkpoint_difference(start, change):\n    checkpoint = start\n    start += change\n    return 2 * start - checkpoint');
-  const make = section(/Reconcile two battery readings/);
+  const make = section(/Add the two battery measurements/);
   assert.match(await make.getByRole('textbox', { name: /Python code/ }).innerText(), /^# /);
   assert.equal(await button('Show full solution and explanation', make).count(), 0);
   assert.equal(await button('Run', make).count(), 0);
-  await make.getByText(/The initial charge is not a recorded reading/).waitFor();
+  await make.locator('strong.teaching-emphasis', { hasText: 'not included' }).waitFor();
   const wrongBattery = 'def battery_after(start, used, restored):\n    after_test = start - used\n    return start + restored';
   await grade(make, wrongBattery, false);
   const feedback = make.getByText(/your code calculates after_test/i);
@@ -157,8 +161,9 @@ try {
   assert.equal(await feedback.count(), 0);
   await grade(make, 'def battery_after(start, used, restored):\n    first = start - used\n    return first + (first + restored)');
   await make.getByRole('button', { name: 'Show hint', exact: true }).waitFor();
-  await press('Try a fresh Make problem');
-  await grade(section(/Score a calibration run/), 'def calibration_score(initial, first_offset, second_offset):\n    checkpoint = initial + first_offset\n    final = checkpoint + second_offset\n    return checkpoint * 2 - final');
+  await press('Optional MAKE practice');
+  await section(/Score two meter adjustments/).getByText(/a positive value increases the current reading, a negative value decreases it/).waitFor();
+  await grade(section(/Score two meter adjustments/), 'def calibration_score(initial, first_offset, second_offset):\n    checkpoint = initial + first_offset\n    final = checkpoint + second_offset\n    return checkpoint * 2 - final');
   await press('Finish lesson');
   await page.waitForURL(at('F01.02', true));
   await page.getByText('Fresh Make problem passed.').waitFor();
@@ -172,8 +177,8 @@ try {
   assert.equal(repaired.coachedBefore, true);
   assert.deepEqual(repaired.hints, []);
   assert(completed.submissions.every(item => !item.hints.includes('H4')));
-  assert.equal(completed.pack.version, '1.6.0');
-  assert.deepEqual(completed.openedTransfer, { id: 'F01.02.make-transfer', version: '1.1.0' });
+  assert.equal(completed.pack.version, '1.7.0');
+  assert.deepEqual(completed.openedTransfer, { id: 'F01.02.make-transfer', version: '1.2.0' });
   assert.equal(completed.traces[0].pattern, 'snapshot-followed-rebinding');
   assert.deepEqual(completed.traces.map(item => item.correct), [false, false, true]);
   assert.deepEqual(completed.traceHelp.map(item => item.level), ['concept', 'guidance', 'worked']);
@@ -182,25 +187,53 @@ try {
   await page.getByText('Trace both bindings: passed after reviewing the worked trace (assisted).').waitFor();
   await capture('reassignment-report', section('Activity outcomes'));
 
+  const identityTrace = { id: 'F01.03.reference-trace', version: '1.0.0' };
+  const oldIdentity = { ...pilot, id: 'synthetic-active-identity', pack: { id: 'python-ai-pilot', version: '1.6.0' },
+    lesson: { id: 'F01.03', version: '1.2.0' }, completion: undefined, legacyDrafts: false, learnedAt: pilot.startedAt,
+    prediction: { id: 'saved-prediction', answer: '2', exercise: { id: 'F01.03.predict', version: '1.0.0' },
+      committedAt: pilot.startedAt, runs: [{ requestId: 'saved-run', status: 'completed', stdout: '1\n' }] },
+    followUps: [{ id: 'saved-followup', answer: '0', expected: 0, correct: true, at: pilot.startedAt }],
+    traces: [{ id: 'saved-format-attempt', check: identityTrace, at: pilot.startedAt, correct: false,
+      answers: [['[3]', 'yes', 'yes'], ['3', 'no', 'yes'], ['first', 'yes', 'yes']],
+      missed: [{row: 0, column: 0}, {row: 1, column: 0}, {row: 2, column: 0}] }],
+    traceHelp: ['concept', 'guidance', 'worked'].map(level => ({ check: identityTrace, level, at: pilot.startedAt })),
+  };
+  const oldDraftKey = 'enntor.draft.F01.03.make.1.2.0.' + oldIdentity.id;
+  await page.evaluate(({ session, key }) => {
+    localStorage.setItem('enntor.evidence.v1.' + session.id, JSON.stringify(session));
+    localStorage.setItem(key, '# synthetic continuing draft');
+  }, { session: oldIdentity, key: oldDraftKey });
   await link('Back to The Climb').press('Enter');
-  await link(/Open F01.03/).press('Enter');
+  await link(/Resume F01.03/).press('Enter');
   await page.setViewportSize({ width: 390, height: 840 });
   if (await page.locator('html').getAttribute('data-theme') !== 'dark') await press('Switch to dark mode');
   await page.reload();
   assert.equal(await page.locator('html').getAttribute('data-theme'), 'dark');
-  await predict('2', '1');
-  await page.getByLabel('Yes, I treated equal contents as the same object').check();
-  await followUp('0');
-  const referenceTrace = await checkTrace('Trace references and contents', ['A', 'yes', 'yes', 'B', 'yes', 'yes', 'A', 'yes', 'yes']);
+  await page.getByText(/Continuing your saved lesson edition 1.2.0/).waitFor();
+  const referenceTrace = section('Trace references and contents');
+  for (const value of ['[3]', '3', 'first']) {
+    await referenceTrace.locator('small code').getByText(value, { exact: true }).waitFor();
+  }
+  await referenceTrace.getByText(/expects A or B/).waitFor();
+  assert.equal(await referenceTrace.getByText(/equal entry as the same object/).count(), 0);
+  assert.equal(await referenceTrace.getByRole('combobox', { name: 'Line 1 · Object label for second (A/B)' }).count(), 0);
+  await referenceTrace.getByRole('combobox', { name: 'Line 2 · Object label for second (A/B)' }).waitFor();
+  assert.deepEqual(await referenceTrace.locator('strong.teaching-label').allTextContents().then(tags => tags.slice(0, 4)), ['A', 'B', 'A', 'B']);
+  assert(await referenceTrace.locator('code.teaching-operator', { hasText: '==' }).count());
+  assert.deepEqual(await recordFor('F01.03'), JSON.parse(JSON.stringify(oldIdentity)));
+  await capture('identity-label-format', referenceTrace.locator('form'));
+  await checkTrace('Trace references and contents', ['A', 'yes', 'yes', 'B', 'yes', 'yes', 'A', 'yes', 'yes']);
   await referenceTrace.getByText(/equal entry as the same object/).waitFor();
-  assert.equal(await section(/^Modify/).count(), 0);
-  await press('Show trace hint', referenceTrace);
+  await referenceTrace.getByRole('textbox', { name: 'Line 3 · Same object?' }).fill('no');
+  assert.equal(await referenceTrace.getByText(/equal entry as the same object/).count(), 0);
   await checkTrace('Trace references and contents', ['A', 'yes', 'yes', 'B', 'no', 'yes', 'A', 'yes', 'yes']);
   await grade(section(/^Modify/), 'def matching_readings(left, right):\n    return int([left] == [right])');
   await page.getByLabel('0, because the slot contains a distinct list.').check();
   await grade(section(/^Build ·/), 'def shared_slot(reading, slot):\n    original = [reading]\n    entries = [original, [reading]]\n    return int(entries[slot] is original)');
   const rack = section(/Classify a rack slot/);
   const rackEditor = rack.getByRole('textbox', { name: /Python code/ });
+  assert.equal(await rackEditor.innerText(), '# synthetic continuing draft');
+  assert.equal(await page.evaluate(key => localStorage.getItem(key), oldDraftKey), '# synthetic continuing draft');
   await rackEditor.press('Escape');
   await page.keyboard.press('Tab');
   assert.equal(await rackEditor.evaluate(node => node === document.activeElement), false);
@@ -215,21 +248,40 @@ try {
   await press('Another hint', rack);
   await press('Show full solution and explanation', rack);
   await grade(rack, 'def rack_badge(primary, spare, slot):\n    return 2 if slot in (0, 1) else int(primary == spare)');
-  await press('Try a fresh Make problem');
+  await page.getByText(/Complete the final MAKE exercise to finish/).waitFor();
+  assert.equal(await button('Finish lesson').count(), 0);
+  await press('Final MAKE exercise');
   const handoff = section('Trace the handoff');
   await handoff.waitFor();
   assert.equal(await section(/Count duplicates across two handoffs/).count(), 0);
   await checkTrace('Trace the handoff', ['no', 'yes', 'yes', 'yes', 'no', 'no']);
   await capture('identity-transfer-trace', handoff);
-  await grade(section(/Count duplicates across two handoffs/), 'def duplicate_flag(level, first, second, restore):\n    return int(first == level) + int(restore == 0 and second == level)');
+  const final = section(/Count duplicates across two handoffs/);
+  await press('Show hint', final);
+  await press('Another hint', final);
+  await press('Show full solution and explanation', final);
+  await final.getByText(/Reattaching the archive list/).waitFor();
+  assert.equal(await button('Finish lesson').count(), 0);
+  await grade(final, 'def duplicate_flag(level, first, second, restore):\n    return int(first == level) + int(restore == 0 and second == level)');
   await press('Finish lesson');
   await page.waitForURL(at('F01.03', true));
-  await page.getByText('Independent coding evidence on the transfer problem.').waitFor();
-  await page.getByText('Trace references and contents: passed with trace guidance (assisted).').waitFor();
+  await page.getByText('Final MAKE passed with help.').waitFor();
+  await page.getByText('Finished as practice. No new independent coding evidence.').waitFor();
+  await page.getByText('Trace references and contents: passed after reviewing the worked trace (assisted).').waitFor();
   await page.getByText('Trace the handoff: passed on the first check.').waitFor();
   const identity = await recordFor('F01.03');
   assert.equal(identity.completion.traceIds.length, 2);
-  assert.equal(identity.traces[0].pattern, 'equal-implies-identical');
+  assert.equal(identity.id, oldIdentity.id);
+  assert.deepEqual(identity.lesson, oldIdentity.lesson);
+  assert.deepEqual(identity.pack, oldIdentity.pack);
+  assert.deepEqual(identity.traces[0], oldIdentity.traces[0]);
+  assert.deepEqual(identity.traceHelp, oldIdentity.traceHelp);
+  assert.deepEqual(identity.followUps, oldIdentity.followUps);
+  assert.equal(identity.traces[1].pattern, 'equal-implies-identical');
+  assert.equal(identity.traces[2].presentationEdition, '1.3.0');
+  assert.equal(identity.completion.independent, false);
+  assert(identity.hints.some(hint => hint.exercise.id === 'F01.03.make-transfer' && hint.exercise.version === '1.2.0' &&
+    hint.level === 'H4' && hint.presentationEdition === '1.3.0'));
   await page.getByLabel('Just a little droplet (+0.5)', { exact: true }).check();
   await page.reload();
   await page.getByLabel('Just a little droplet (+0.5)', { exact: true }).waitFor();
@@ -253,10 +305,10 @@ try {
   await press('Another hint', make);
   await press('Show full solution and explanation', make);
   await grade(make, 'def battery_after(start, used, restored):\n    first = start - used\n    return first + (first + restored)');
-  await press('Practise the transfer again');
-  await page.getByText(/finish this session as practice/).waitFor();
+  await press('Final MAKE exercise');
+  await page.getByText(/finish the session as practice/).waitFor();
   assert.equal(await button('Finish lesson').count(), 0);
-  await grade(section(/Score a calibration run/), 'def calibration_score(initial, first_offset, second_offset):\n    checkpoint = initial + first_offset\n    return checkpoint - second_offset');
+  await grade(section(/Score two meter adjustments/), 'def calibration_score(initial, first_offset, second_offset):\n    checkpoint = initial + first_offset\n    return checkpoint - second_offset');
   await press('Finish lesson');
   await page.getByText('Finished as practice. No new independent coding evidence.').waitFor();
   const records = await learnerRecords();

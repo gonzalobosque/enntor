@@ -8,7 +8,7 @@ export const cargoWorkout: Exercise = {
   title: 'Read a warehouse scale', kind: 'transfer', difficulty: 1,
   conceptIds: [f01Concept],
   prompt: [
-    'The scale shows the combined weight of the cargo and its empty pallets. Each pallet weighs 4 kg. The dispatch record needs the weight of the cargo alone.\n\n',
+    'The scale shows the ', { role: 'emphasis', text: 'combined weight' }, ' of the cargo and its empty pallets. Each pallet weighs 4 kg. The dispatch record needs the weight of the ', { role: 'emphasis', text: 'cargo alone' }, '.\n\n',
     'Define ', { role: 'function', text: 'cargo_weight()' }, ' with two nonnegative integer inputs, in order: ',
     { role: 'variable', text: 'gross' }, ' (the scale reading in kg) and ',
     { role: 'variable', text: 'pallets' }, ' (the number of pallets). The scale reading always covers the full pallet weight. Return the cargo-only weight as an integer in kg.\n\n',
@@ -41,7 +41,7 @@ export const cargoWorkout: Exercise = {
 export const visitorWarmUp: Exercise = {
   ...cargoWorkout, id: 'gym.F01.01.visitors', title: 'Adjust a visitor forecast', kind: 'modify',
   prompt: ['A venue has a confirmed visitor count and expects the same number of extra guests at each of two sessions. Change ',
-    { role: 'function', text: 'visitors()' }, ' so the confirmed count is included only once. Both inputs are nonnegative integers. For 10 confirmed guests and 3 extra guests per session, return 16.'],
+    { role: 'function', text: 'visitors()' }, ' so the confirmed count is included ', { role: 'emphasis', text: 'only once' }, '. Both inputs are nonnegative integers. For 10 confirmed guests and 3 extra guests per session, return 16.'],
   starterCode: 'def visitors(confirmed, extra):\n    return (confirmed + extra) * 2\n',
   hints: [{ level: 'H0', text: 'Which group of guests occurs twice?' }],
   execution: { ...cargoWorkout.execution!, entryPoint: 'visitors' },
@@ -54,7 +54,7 @@ export const visitorWarmUp: Exercise = {
 
 export const postcardTransfer: Exercise = {
   ...cargoWorkout, id: 'gym.F01.01.postcards', title: 'Count postcards for an exhibition',
-  prompt: ['An exhibition receives cartons of postcards. Every carton contains 6 postcards. A separate delivery contains loose postcards. The exhibit needs the total number of postcards. Define ',
+  prompt: ['An exhibition receives cartons of postcards. Every carton contains ', { role: 'emphasis', text: '6 postcards' }, '. A separate delivery contains loose postcards. The exhibit needs the total number of postcards. Define ',
     { role: 'function', text: 'postcard_total()' }, ' with nonnegative integer inputs ',
     { role: 'variable', text: 'cartons' }, ' and ', { role: 'variable', text: 'loose' },
     ', in that order. Return the total as an integer. For 3 cartons and 5 loose postcards, return 23.'],

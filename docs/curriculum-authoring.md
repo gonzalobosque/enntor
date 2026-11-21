@@ -36,3 +36,10 @@ ENNTOR_TEST_ORIGIN=http://127.0.0.1:5173 \
 ```
 
 Without `ENNTOR_REVIEW_SCREENSHOTS` the script captures no images. Include relevant screenshots and reproduction commands in the PR. Inspect the files before publishing. Also run the existing pilot editor/results and Gym browser checks. The current batch verifies keyboard and narrow-layout behavior in Chromium. Test physical devices or assistive technologies separately when the release requires them.
+
+
+### First-read contract and revisions
+
+Use the [first-read exercise review](quality/LEARNING_STANDARDS.md#first-read-exercise-review) before accepting a task. Choose semantic spans for names, operators, exact input tokens, object labels and decisive conditions. Text must still identify the meaning of each span without relying on its color. A trace with a fixed choice vocabulary may declare object-label choices and use accessible selects.
+
+Version an exercise when the contract wording or help changes materially. Explicitly register a resumable prior edition only when starters, assessment cases, trace IDs and expected answers remain compatible. Pin the assessment editions used by the saved session. A clarification can change the presentation while new attempts and help events record the presentation edition separately. Treat older versions of the same behavioral exercise as previous exposure when judging independence. Earlier records remain in history even when incompatible editions cannot resume in place.

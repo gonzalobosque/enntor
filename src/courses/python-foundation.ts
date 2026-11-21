@@ -4,6 +4,10 @@ import { pythonEngineId, pythonVersion } from '../execution/python-config';
 export const symbol = (text: string): TeachingInline => ({ role: 'variable', text });
 export const call = (text: string): TeachingInline => ({ role: 'function', text });
 export const code = (text: string): TeachingInline => ({ role: 'code', text });
+export const token = (text: string): TeachingInline => ({ role: 'token', text });
+export const operator = (text: string): TeachingInline => ({ role: 'operator', text });
+export const objectLabel = (text: string): TeachingInline => ({ role: 'label', text });
+export const emphasis = (text: string): TeachingInline => ({ role: 'emphasis', text });
 export const version = '1.0.0';
 const execution = {
   engineId: pythonEngineId, language: 'python', runtimeVersion: pythonVersion,

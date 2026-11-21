@@ -1,5 +1,5 @@
 import type { LessonSequence } from './load-course-pack';
-import { call, code, foundationLesson, ladder, prediction, symbol, task } from './python-foundation';
+import { call, code, emphasis, objectLabel, operator, token, foundationLesson, ladder, prediction, symbol, task } from './python-foundation';
 
 const id = 'F01.03';
 const concept = 'python.identity-equality';
@@ -8,7 +8,9 @@ export const f0103Exercises = [
   prediction(id, concept, 'front = [7]\nalias = front\nother = [7]\nprint(int(alias is front) + int(other is front))', 1),
   task(id, concept, {
     key: 'modify', kind: 'modify', title: 'Compare two readings by value', entryPoint: 'matching_readings',
-    prompt: 'The two instruments each produce a separate one-item list. Change matching_readings(left, right) so it returns integer 1 when the two readings have equal contents and integer 0 otherwise. Inputs are signed integers. With (4, 4), return 1 even though the two lists are distinct.',
+    prompt: ['The two instruments each produce a separate one-item list. Update ', call('matching_readings()'), ' so it returns integer 1 when the lists have ',
+      emphasis('equal contents'), ' and integer 0 otherwise. ', symbol('left'), ' and ', symbol('right'),
+      ' are signed integers. With (4, 4), return 1 even though the two lists are distinct.'],
     starter: 'def matching_readings(left, right):\n    a = [left]\n    b = [right]\n    return int(a is b)',
     hints: [{ level: 'H0', text: 'The function creates two lists. Which question is about their entries rather than their identity?' }],
     cases: [['equal', [4, 4], 1], ['different', [4, 5], 0], ['zero', [0, 0], 1],
@@ -16,7 +18,8 @@ export const f0103Exercises = [
   }),
   task(id, concept, {
     key: 'build', kind: 'write', title: 'Check whether a slot is an alias', entryPoint: 'shared_slot',
-    prompt: 'Complete shared_slot(reading, slot). The supplied entries contain an original list at position 0 and an independently created list with equal contents at position 1. Return integer 1 only if the selected entry is the original object, or 0 otherwise. The reading is a signed integer and slot is 0 or 1. For (6, 1), return 0.',
+    prompt: ['Complete ', call('shared_slot()'), '. Slot 0 holds the original list and slot 1 holds a separate list with equal contents. Return integer 1 only if the selected entry is the ',
+      emphasis('original object'), ', or 0 otherwise. ', symbol('reading'), ' is a signed integer and ', symbol('slot'), ' is 0 or 1. For (6, 1), return 0.'],
     starter: 'def shared_slot(reading, slot):\n    original = [reading]\n    entries = [original, [reading]]\n    selected = entries[slot]\n    pass  # Return the identity check as an integer.',
     hints: [{ level: 'H0', text: 'Draw one arrow from each slot to its list. An equal entry need not land at the same object.' }],
     cases: [['original', [6, 0], 1], ['other', [6, 1], 0], ['zero-original', [0, 0], 1],
@@ -35,9 +38,15 @@ export const f0103Exercises = [
       ['different', [9, 8, 2], 0], ['zero-distinct', [0, 0, 2], 1], ['negative-distinct', [-3, 3, 2], 0]],
   }),
   task(id, concept, {
-    key: 'make-transfer', revision: '1.2.0', kind: 'transfer', title: 'Count duplicates across two handoffs', entryPoint: 'duplicate_flag',
-    prompt: 'Define duplicate_flag(level, first, second, restore). The first three inputs are signed integers. restore is 0 or 1. The archive keeps one list containing level throughout.\n\nUpdate 1: the desk receives a new list containing first.\nUpdate 2: if restore is 1, the desk receives the archive list itself. If restore is 0, it receives a new list containing second.\n\nAfter each update, count one duplicate if the desk list is separate from the archive list and their contents match. Return the total as an integer. (5, 5, 5, 0) returns 2. (5, 5, 5, 1) returns 1 because the second update shares the archive object.',
-    hints: [],
+    key: 'make-transfer', revision: '1.3.0', kind: 'transfer', title: 'Count duplicates across two handoffs', entryPoint: 'duplicate_flag',
+    prompt: ['Define ', call('duplicate_flag()'), '. The archive keeps one list containing ', symbol('level'), ' throughout. The first three inputs are signed integers. ', symbol('restore'), ' is 0 or 1.\n\n',
+      emphasis('Update 1'), ': the desk receives a new list containing ', symbol('first'), '.\n',
+      emphasis('Update 2'), ': if restore is 1, the desk receives the archive list itself. If restore is 0, it receives a new list containing ', symbol('second'), '.\n\n',
+      'After each update, count one duplicate only if the desk list is a ', emphasis('separate object with equal contents'), '. Return the total as an integer. (5, 5, 5, 0) returns 2. (5, 5, 5, 1) returns 1 because the second update shares the archive object.'],
+    hints: ladder('After each update, ask two separate questions: do the entries match, and are the desk and archive pointing to the same object?',
+      'Keep the archive reference available while the desk changes. Evaluate the two updates separately and count only separate lists with matching entries.',
+      'A new list with the archived reading counts as one duplicate. Reattaching the archive list makes the two references identical, so this update adds no duplicate.',
+      'def duplicate_flag(level, first, second, restore):\n    archive = [level]\n    desk = [first]\n    total = int(desk == archive) - int(desk is archive)\n    desk = [[second], archive][restore]\n    return total + int(desk == archive) - int(desk is archive)'),
     cases: [['two-duplicates', [5, 5, 5, 0], 2], ['restored', [5, 5, 5, 1], 1], ['first-only', [5, 5, 2, 0], 1],
       ['second-only', [5, 2, 5, 0], 1], ['no-duplicates', [5, 2, 4, 0], 0], ['restored-after-change', [0, -1, 0, 1], 0]],
   }),
@@ -57,33 +66,43 @@ export const f0103Lesson = foundationLesson({
   ],
   mentorTips: [{ id: id + '.tip', text: 'Draw labels with arrows to objects. Compare the arrows for identity and the entries for equality.', sourceRefs: ['P01'] }],
 }, f0103Exercises);
-f0103Lesson.version = '1.2.0';
+f0103Lesson.version = '1.3.0';
 
 export const f0103Sequence: LessonSequence = {
   draftsFromLesson: '1.1.0',
-  equivalentExerciseVersions: { [id + '.make']: ['1.1.0', '1.0.0'], [id + '.make-transfer']: ['1.1.0'] },
+  resumeFrom: {
+    '1.2.0': { [id + '.make-transfer']: '1.2.0' },
+    '1.1.0': { [id + '.make']: '1.1.0', [id + '.make-transfer']: '1.1.0' },
+  },
+  equivalentExerciseVersions: { [id + '.make']: ['1.1.0', '1.0.0'], [id + '.make-transfer']: ['1.2.0', '1.1.0'] },
   trace: {
     id: id + '.reference-trace', version: '1.0.0', title: 'Trace references and contents',
-    prompt: 'Call the list created on line 1 A and the list created on line 3 B. For each row, name the object second refers to. Then answer yes or no for second is first and second == first.',
+    prompt: ['Line 1 creates a list we call object ', objectLabel('A'), '. Line 3 creates a separate list we call object ', objectLabel('B'),
+      '. Both contain ', code('3'), '. ', symbol('first'), ' and ', symbol('second'),
+      ' are variable names that refer to those objects.\n\nIn each row, choose the ', emphasis('object label'), ' (',
+      objectLabel('A'), ' or ', objectLabel('B'), ') that ', symbol('second'), ' refers to. Use the labels here rather than a variable name or the list contents. Then answer yes or no for ',
+      symbol('second'), ' ', operator('is'), ' ', symbol('first'), ' and ', symbol('second'), ' ', operator('=='), ' ', symbol('first'), '.'],
     source: 'first = [3]\nsecond = first\nsecond = [3]\nsecond = first',
-    columns: ['second', 'Same object?', 'Equal contents?'],
+    columns: ['Object label for second (A/B)', 'Same object?', 'Equal contents?'],
+    labelChoices: { column: 0, options: ['A', 'B'] },
     rows: [{ label: 'Line 2', expected: ['a', 'yes', 'yes'] }, { label: 'Line 3', expected: ['b', 'no', 'yes'] },
       { label: 'Line 4', expected: ['a', 'yes', 'yes'] }],
     help: {
       concept: 'Draw an arrow from each name to a list. Check the arrows for identity and the entries for equality.',
       guidance: 'A name on the right reuses its arrow target. A list display makes a different object, even if the entries match.',
       worked: [
-        'Second receives the reference already held by first, so both comparisons are true.',
-        'The new list has the same entry as A, but the arrow from second now ends at B.',
-        'The assignment gives second the reference to A again, so both names share it.',
+        [symbol('second'), ' receives the reference already held by ', symbol('first'), ', so both names refer to ', objectLabel('A'), '.'],
+        ['The new list has the same entry as ', objectLabel('A'), ', but ', symbol('second'), ' now refers to ', objectLabel('B'), '.'],
+        ['The assignment gives ', symbol('second'), ' the reference to ', objectLabel('A'), ' again.'],
       ],
     },
-    mistake: { id: 'equal-implies-identical', message: 'Your line 3 comparison treats the equal entry as the same object. Check where the list was created.',
+    mistake: { id: 'equal-implies-identical', message: ['Your line 3 comparison treats the equal entry as the same object. Check where object ', objectLabel('B'), ' was created.'],
       cells: [{ row: 1, column: 0, value: 'b' }, { row: 1, column: 1, value: 'yes' }, { row: 1, column: 2, value: 'yes' }] },
   },
   transferTrace: {
     id: id + '.handoff-trace', version: '1.0.0', title: 'Trace the handoff',
-    prompt: 'Compare desk with archive after each indicated line. Answer yes or no. Follow both names when archive itself is rebound.',
+    prompt: ['Compare ', symbol('desk'), ' with ', symbol('archive'), ' after each indicated line. Answer ', token('yes'), ' or ', token('no'),
+      ' for identity (', operator('is'), ') and equality (', operator('=='), '). Follow both names when the archive is rebound.'],
     source: 'archive = [8]\ndesk = archive\narchive = [8]\nbackup = archive\ndesk = backup\ndesk = [4]',
     columns: ['Same object?', 'Equal contents?'],
     help: {

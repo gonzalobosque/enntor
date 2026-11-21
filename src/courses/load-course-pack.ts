@@ -9,6 +9,7 @@ export interface LessonSequence {
   // A copy edit keeps the previous edition's behavioral contract and draft shape.
   equivalentExerciseVersions?: Record<string, string[]>;
   draftsFromLesson?: string;
+  resumeFrom?: Record<string, Record<string, string>>;
   legacy?: { draftExerciseId: string; draftVersion: string };
   predictionCoaching: {
     explanation: TeachingProse;
@@ -81,11 +82,15 @@ export function loadCoursePack(pack: CoursePack, sequences: Record<string, Lesso
       for (const trace of [sequence.trace, sequence.transferTrace]) {
         if (!trace) continue;
         require(trace.id.startsWith(lessonId + '.') && version.test(trace.version) && trace.columns.length && trace.rows.length &&
-          trace.help.concept.trim() && trace.help.guidance.trim() && trace.help.worked.length === trace.rows.length &&
-          trace.help.worked.every(line => line.trim()) && new Set(trace.columns).size === trace.columns.length &&
+          trace.help.concept.length && trace.help.guidance.length && trace.help.worked.length === trace.rows.length &&
+          trace.help.worked.every(line => line.length) && new Set(trace.columns).size === trace.columns.length &&
           new Set(trace.rows.map(row => row.label)).size === trace.rows.length &&
           trace.rows.every(row => row.expected.length === trace.columns.length && row.expected.every(cell => cell.trim() === cell && cell === cell.toLowerCase() && !!cell)),
         trace.id + ' trace grid');
+        const labels = trace.labelChoices;
+        require(!labels || (labels.column >= 0 && labels.column < trace.columns.length && labels.options.length >= 2 &&
+          trace.rows.every(row => labels.options.some(label => label.toLowerCase() === row.expected[labels.column]))),
+        trace.id + ' trace response labels');
       }
       require(!sequence.trace || sequence.trace.id !== sequence.transferTrace?.id, lessonId + ' repeated trace ID');
       return { pack: { id: pack.id, version: pack.version }, module, lesson: lesson!, sequence,
