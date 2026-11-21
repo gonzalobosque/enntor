@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import type { ContentReference } from '../courses/contracts';
-import { now, readEvidence, writeEvidence } from './evidence';
-import type { LessonEvidence } from './evidence';
+import { now, readEvidence, withSweatRating, writeEvidence } from './evidence';
+import type { LessonEvidence, Sweat } from './evidence';
 
 function newEvidence(pack: ContentReference, lesson: ContentReference, legacyDrafts: boolean): LessonEvidence {
   const at = now();
@@ -9,17 +9,17 @@ function newEvidence(pack: ContentReference, lesson: ContentReference, legacyDra
     startedAt: at, updatedAt: at, followUps: [], hints: [], submissions: [] };
 }
 
-export function useEvidence(pack: ContentReference, lesson: ContentReference) {
+export function useEvidence(pack: ContentReference, lesson: ContentReference, legacyDrafts: boolean, resumableVersions: string[] = []) {
   const [initial] = useState(() => {
     try {
-      const history = readEvidence(lesson);
-      const current = history[0];
+      const history = readEvidence(lesson, pack.id);
+      const current = history.find((item) => item.lesson.version === lesson.version || resumableVersions.includes(item.lesson.version) || item.completion);
       return { history, current, error: false };
     } catch {
       return { history: [], current: undefined, error: true };
     }
   });
-  const [session, setSession] = useState(() => initial.current ?? newEvidence(pack, lesson, !initial.history.length));
+  const [session, setSession] = useState(() => initial.current ?? newEvidence(pack, lesson, legacyDrafts && !initial.history.length));
   const current = useRef(session);
   const persisted = useRef(initial.current);
   const [history, setHistory] = useState(initial.history);
@@ -62,5 +62,21 @@ export function useEvidence(pack: ContentReference, lesson: ContentReference) {
     }
   }
 
-  return { session, history, error, update, save, startAgain };
+  function rate(target: LessonEvidence, sweat: Sweat) {
+    const rated = withSweatRating(target, sweat);
+    if (target === rated) return;
+    if (current.current.id === target.id) {
+      save(rated, true);
+      return;
+    }
+    try {
+      writeEvidence(rated, target);
+      setHistory((old) => old.map((item) => item.id === rated.id ? rated : item));
+      setError(false);
+    } catch {
+      setError(true);
+    }
+  }
+
+  return { session, history, error, update, save, startAgain, rate };
 }

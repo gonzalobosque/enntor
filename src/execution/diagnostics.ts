@@ -47,3 +47,17 @@ export function diagnoseExecution(exercise: Exercise, submission: Submission): D
     nudge: { id: 'trace-exception', question: 'Trace the failing case up to the line Python highlights. What value or name did that line need at that point?' },
   };
 }
+
+export function failedReturnCases(exercise: Exercise, submission: Submission): ResultObservation[] {
+  return exercise.grading.publicCases.flatMap((test, index): ResultObservation[] => {
+    const run = submission.runs?.[index];
+    if (run?.status !== 'completed' || !submission.grade?.evidence.some(({ id, passed }) => id === test.id && !passed) ||
+        typeof test.expected !== 'number' || !Array.isArray(test.input) ||
+        !test.input.every((value): value is number => typeof value === 'number')) return [];
+    const actual = run.value;
+    return [{ kind: actual === null ? 'missing-return' : typeof actual === 'number' && actual < 0 && test.expected > 0
+      ? 'negative-for-positive' : 'unexpected-result',
+      caseId: test.id, inputs: test.input, actual: typeof actual === 'number' ? actual : JSON.stringify(actual) ?? 'no value',
+      expected: test.expected }];
+  });
+}

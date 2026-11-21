@@ -5,7 +5,7 @@ export function TeachingProseText({ content }: { content: TeachingProse }) {
   if (typeof content === 'string') return content;
   return content.map((part, index) => (
     <Fragment key={index}>
-      {typeof part === 'string' ? part : part.role === 'variable' ? <strong className="teaching-variable">{part.text}</strong> : <code className={`teaching-${part.role}`}>{part.text}</code>}
+      {typeof part === 'string' ? part : ['variable', 'label', 'emphasis'].includes(part.role) ? <strong className={`teaching-${part.role}`}>{part.text}</strong> : <code className={`teaching-${part.role}`}>{part.text}</code>}
     </Fragment>
   ));
 }

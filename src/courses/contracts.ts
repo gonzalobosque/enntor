@@ -10,7 +10,7 @@ export interface ContentReference {
   version: ContentVersion;
 }
 
-export type TeachingInline = string | { role: 'function' | 'variable' | 'keyword' | 'code'; text: string };
+export type TeachingInline = string | { role: 'function' | 'variable' | 'keyword' | 'code' | 'token' | 'operator' | 'label' | 'emphasis'; text: string };
 
 export type TeachingProse = string | TeachingInline[];
 
@@ -59,6 +59,7 @@ export interface Lesson {
   exerciseIds: ContentId[];
   progression: {
     requiredExerciseIds: ContentId[];
+    /** Fresh unaided transfer is required for independent credit after solution help. */
     requiresIndependentTransfer: boolean;
   };
 }
@@ -75,6 +76,7 @@ export interface Exercise {
   conceptIds: ContentId[];
   difficulty: number;
   starterCode?: string;
+  coaching?: { unusedCalculationQuestion?: string };
   hints: { level: HintLevel; text: TeachingProse; solutionCode?: string }[];
   execution?: {
     engineId: string;

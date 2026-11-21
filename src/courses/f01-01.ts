@@ -170,3 +170,33 @@ export const predictionCoaching = {
     explanation: [name('extra'), ' is ', code('5'), '. Multiplication gives ', code('5 * 2 = 10'), ', then adding ', name('base'), ' gives ', code('13'), '.'],
   },
 };
+
+/** Presentation metadata for the existing pilot; its authored content is unchanged. */
+export const pilotSequence = {
+  learnTitle: 'Trace backwards, execute forwards',
+  titleAccent: 'evaluation order',
+  legacy: { draftExerciseId: modify.id, draftVersion: '1.0.0' },
+  predictionCoaching: {
+    ...predictionCoaching,
+    hypothesis: {
+      id: 'addition-first',
+      answer: predictionCoaching.alternativeAnswer,
+      possibleReasoning: predictionCoaching.possibleReasoning,
+      actualReasoning: predictionCoaching.actualReasoning,
+      question: 'Is that how you got 30?',
+      confirm: 'Yes, I added first',
+      confirmedFeedback: 'Thanks for confirming. Try tracing multiplication first in the next example.',
+      rejectedFeedback: 'Thanks for clarifying. Start with the assignments and trace each dependency in the next example.',
+      report: {
+        confirmed: 'You confirmed adding first when tracing the initial expression.',
+        rejected: 'You rejected the suggestion that you added first.',
+        unconfirmed: 'Adding first was suggested as a possibility and remains unconfirmed.',
+      },
+    },
+  },
+  buildPlan: {
+    ...buildPlan,
+    retry: 'Try again. The reservation applies to the whole venue once.',
+    report: 'In Build, at least one plan applied the reservation to each row. The requirement applies it once to the venue.',
+  },
+};

@@ -1,10 +1,11 @@
 import { ExerciseHints } from './ExerciseHints';
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
-import type { Exercise, HintLevel, TeachingProse } from '../courses/contracts';
+import type { Exercise, HintLevel } from '../courses/contracts';
 import type { ExecutionResult, GradeResult } from '../execution/contracts';
-import { gradeExercise, runExercise } from '../execution/grading';
+import { gradeExercise } from '../execution/grading';
 import { pythonEngine } from '../execution/python-engine';
 import { TeachingProseText } from './TeachingText';
+import type { CheckCoaching } from './check-coaching';
 import type { Submission } from './evidence';
 import { now } from './evidence';
 
@@ -45,14 +46,14 @@ export function Console({ runs, printedLabel = 'stdout' }: { runs: ExecutionResu
   );
 }
 
-export function ExerciseEditor({ stage, exercise, draftKey, hints, priorPass, feedback, onHint, onAttempt, onBusy, onDraftFailure, onEdit }: {
-  stage: 'Modify' | 'Build' | 'Make' | 'Practice'; exercise: Exercise; draftKey: string; hints: HintLevel[];
-  priorPass: boolean; feedback?: TeachingProse; onHint: (level: HintLevel) => void;
+export function ExerciseEditor({ stage, exercise, draftKey, earlierDraftKey, hints, allowAssistedFinish, priorPass, coach, onHint, onAttempt, onBusy, onDraftFailure, onEdit }: {
+  stage: 'Modify' | 'Build' | 'Make' | 'Practice'; exercise: Exercise; draftKey: string; earlierDraftKey?: string; hints: HintLevel[];
+  priorPass: boolean; allowAssistedFinish?: boolean; coach?: (attempt: Submission) => Promise<CheckCoaching | undefined>; onHint: (level: HintLevel) => void;
   onAttempt: (attempt: Submission) => void; onBusy: (value: boolean) => void; onDraftFailure: (value: boolean) => void; onEdit?: () => void;
 }) {
   const initialCode = exercise.starterCode!;
   const archiveKey = `${draftKey}.previous`;
-  const [savedDraft] = useState(() => readDraft(draftKey));
+  const [savedDraft] = useState(() => readDraft(draftKey) ?? (earlierDraftKey ? readDraft(earlierDraftKey) : null));
   const [code, setCode] = useState(savedDraft ?? initialCode);
   const [draftNotice, setDraftNotice] = useState(savedDraft !== null && savedDraft !== initialCode ? 'Previous draft restored' : '');
   const [archive, setArchive] = useState(() => {
@@ -61,6 +62,7 @@ export function ExerciseEditor({ stage, exercise, draftKey, hints, priorPass, fe
   const [saveFailed, setSaveFailed] = useState(false);
   const [runs, setRuns] = useState<ExecutionResult[]>([]);
   const [grade, setGrade] = useState<GradeResult>();
+  const [coaching, setCoaching] = useState<CheckCoaching>();
   const [busy, setBusy] = useState(false);
   const active = useRef<AbortController | null>(null);
 
@@ -75,6 +77,7 @@ export function ExerciseEditor({ stage, exercise, draftKey, hints, priorPass, fe
     setCode(value);
     setRuns([]);
     setGrade(undefined);
+    setCoaching(undefined);
     try {
       localStorage.setItem(draftKey, value);
       setSaveFailed(false);
@@ -105,12 +108,13 @@ export function ExerciseEditor({ stage, exercise, draftKey, hints, priorPass, fe
     setCode(value);
     setRuns([]);
     setGrade(undefined);
+    setCoaching(undefined);
     setSaveFailed(false);
     onDraftFailure(false);
     setDraftNotice(notice);
   }
 
-  async function execute(mode: 'run' | 'check') {
+  async function execute() {
     if (active.current) return;
     const job = new AbortController();
     active.current = job;
@@ -118,21 +122,21 @@ export function ExerciseEditor({ stage, exercise, draftKey, hints, priorPass, fe
     onBusy(true);
     setRuns([]);
     setGrade(undefined);
+    setCoaching(undefined);
     try {
-      if (mode === 'check') {
-        const attempt = { id: crypto.randomUUID(), exercise: { id: exercise.id, version: exercise.version },
-          source: code, hints: [...hints], priorPass, startedAt: now() };
-        const start = performance.now();
-        onAttempt(attempt);
-        const checked = await gradeExercise(pythonEngine, exercise, code, job.signal);
-        onAttempt({ ...attempt, ...checked, finishedAt: now(), elapsedMs: performance.now() - start });
-        if (active.current === job) {
-          setRuns(checked.runs);
-          setGrade(checked.grade);
-        }
-      } else {
-        const result = await runExercise(pythonEngine, exercise, code, job.signal);
-        if (active.current === job) setRuns([result]);
+      const attempt = { id: crypto.randomUUID(), exercise: { id: exercise.id, version: exercise.version },
+        source: code, hints: [...hints], priorPass, startedAt: now() };
+      const start = performance.now();
+      onAttempt(attempt);
+      const checked = await gradeExercise(pythonEngine, exercise, code, job.signal);
+      const finishedAt = now();
+      const complete = { ...attempt, ...checked, finishedAt, elapsedMs: performance.now() - start };
+      const note = active.current === job ? await coach?.(complete) : undefined;
+      onAttempt({ ...complete, coaching: note && active.current === job ? { ...note, shownAt: now() } : undefined });
+      if (active.current === job) {
+        setRuns(checked.runs);
+        setGrade(checked.grade);
+        setCoaching(note);
       }
     } finally {
       if (active.current === job) {
@@ -148,7 +152,7 @@ export function ExerciseEditor({ stage, exercise, draftKey, hints, priorPass, fe
           {stage !== 'Build' && <h2 className="pilot-stage-heading">{stage}</h2>}
           <h3 className="pilot-exercise-heading" id={`${exercise.id}-heading`}>{exercise.title}</h3>
           <p className="exercise-prompt"><TeachingProseText content={exercise.prompt} /></p>
-          <ExerciseHints hints={exercise.hints} revealed={hints} busy={busy} onReveal={onHint} />
+          <ExerciseHints allowAssistedFinish={allowAssistedFinish} hints={exercise.hints} revealed={hints} busy={busy} onReveal={onHint} />
           <p className="python-editor-label">{stage} Python code</p>
           <Suspense fallback={<p role="status">Loading the Python editor…</p>}>
             <PythonEditor id={`${exercise.id}-editor`} label={`${stage} Python code`}
@@ -157,8 +161,7 @@ export function ExerciseEditor({ stage, exercise, draftKey, hints, priorPass, fe
           <p className="muted" role="status">{saveFailed ? 'Draft could not be saved in this browser.' : 'Drafts are saved in this browser.'}</p>
           {saveFailed && <button disabled={busy} onClick={() => saveCode(code)}>Retry saving draft</button>}
           <div className="pilot-controls">
-            <button disabled={busy} onClick={() => void execute('run')}>Run</button>
-            <button className="pilot-primary" disabled={busy} onClick={() => void execute('check')}>Check solution</button>
+            <button className="pilot-primary" disabled={busy} onClick={() => void execute()}>Check solution</button>
             <button disabled={!busy} onClick={() => active.current?.abort()}>Stop</button>
             <button disabled={busy || code === initialCode} onClick={() => {
               if (window.confirm('Reset to starter code? Your draft will be saved under Previous drafts.')) {
@@ -184,15 +187,16 @@ export function ExerciseEditor({ stage, exercise, draftKey, hints, priorPass, fe
               </li>)}</ol>
             </details>
           )}
-          <p className="muted">Run executes the editor as a script. Check solution calls your function with public test inputs.</p>
+          <p className="muted">Check solution calls your function with public test inputs.</p>
           {busy && <p role="status">Python is running…</p>}
           <Console runs={runs} />
           {grade && (
             <div className="pilot-feedback" role="status">
               <h3>Test results</h3>
               <p className={grade.verdict === 'passed' ? 'pilot-success' : undefined}>{grade.verdict === 'passed' ? 'All public cases passed.' : grade.verdict === 'failed'
-                ? <>Some public cases failed. {feedback && <TeachingProseText content={feedback} />}</>
+                ? 'Some public cases failed.'
                 : 'Check incomplete. See the execution output above.'}</p>
+              {coaching && <p className="check-coaching"><strong>{coaching.fact}</strong> {coaching.question}</p>}
               <table className="pilot-tests">
                 <caption>Public return-value checks</caption>
                 <thead><tr><th scope="col">Inputs</th><th scope="col">Expected</th>

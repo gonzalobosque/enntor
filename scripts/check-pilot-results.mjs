@@ -80,7 +80,7 @@ try {
   assert(await make.locator('strong.teaching-variable').count());
   assert.match(await make.getByRole('textbox').innerText(), /^# /);
   await button('Save for later').press('Enter');
-  await page.getByRole('link', { name: /Open pilot lesson/ }).press('Enter');
+  await page.getByRole('link', { name: /Resume F01.01/ }).press('Enter');
   await make.getByRole('textbox').fill('def receipt(tickets, price):\n    return tickets * (price + 4)');
   await button('Check solution', make).press('Enter');
   await make.getByText(/Some public cases failed/).waitFor();
@@ -106,7 +106,7 @@ try {
   await page.waitForURL(report);
   await page.getByText('Lesson completed and saved on this browser.').waitFor();
   await page.getByText(/confirmed adding first/).waitFor();
-  await page.getByText(/one plan subtracted/).waitFor();
+  await page.getByText(/plan applied the reservation/).waitFor();
   const [saved] = await evidence();
   for (const [label, value] of [
     ['Nah, piece of cake! (+1)', 1], ['Just a little droplet (+0.5)', 0.5],

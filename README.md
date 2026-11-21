@@ -2,21 +2,21 @@
 
 ENNTOR is a teaching-first learning platform for independent problem solving. Its first planned Course Pack focuses on Python and applied AI/ML interview skills. The educational goal is to write correct, explainable code from scratch, repair mistakes, and transfer understanding to unfamiliar problems.
 
-## Current release · Milestone 3C
+## Current scope · Milestone 4A
 
-The Climb offers one pilot lesson, **F01.01 · Expressions and evaluation order**. Learn from a worked example, commit a prediction, investigate the real Python result, modify a function, plan and build a guided function, then write one from scratch. Finish saves completion and opens a separate learning report, where the optional Sweat check-in can be changed or skipped. The Gym offers one evaluation-order workout. The Room remains a preview.
+The Climb offers the first three F01 lessons, from **Expressions and evaluation order** through **Variables and reassignment** to **Identity and equality**. Each completed lesson opens the next. Learn from a worked example, commit a prediction, investigate the real Python result, modify a function, plan and build a guided function, then write one from scratch. Finish saves completion and opens a separate learning report, where the optional Sweat check-in can be changed or skipped. The Gym offers one evaluation-order workout. The Room remains a preview.
 
 The CodeMirror Python editor uses syntax-aware indentation. Tab indents four spaces, Shift+Tab outdents, and Escape followed by Tab moves focus out. Use the standard undo and redo shortcuts for your platform.
 
-**Run** executes the editor as a script. **Check solution** calls the function with public cases and reports the verdict separately from console output. **Stop** terminates the active worker. Reset and Try again from scratch save edited code under Previous drafts before restoring starter code.
+**Check solution** runs the graded editor with public cases and reports the verdict separately from console output. Predictions retain their own execution action. **Stop** terminates the active worker. Reset and Try again from scratch save edited code under Previous drafts before restoring starter code.
 
-A passing Make result without hints or a prior pass on that exercise demonstrates independent skill on the pilot problem. Conceptual hints count as assistance. An implementation hint requires a separate Make task before Finish. The completion summary distinguishes these states.
+A passing Make result without hints or a prior pass on that exercise demonstrates independent skill on that problem when there is no earlier exposure to the same exercise edition. Conceptual hints count as assistance. An implementation hint requires a separate Make task before Finish. The completion summary distinguishes these states.
 
 ### Teaching prose and local evidence
 
 Author teaching prose with ordinary strings and explicit inline spans tagged as function, variable, keyword, or code. The shared renderer applies the existing theme styles to Learn, Investigate, instructions, and hints.
 
-Drafts and versioned session evidence are saved to browser localStorage on the current origin. Save for later keeps unfinished work available from The Climb. The saved report uses `#/climb/F01.01/results`. Learning history shows prior submissions, and reopening a completed lesson displays the saved result. The pilot records checking time rather than time spent studying. Storage limits and browser data clearing apply. Use one editing tab per session. Learner evidence stays in the browser.
+Drafts and versioned session evidence are saved to browser localStorage on the current origin. Save for later keeps unfinished work available from The Climb. Reports use `#/climb/<lesson-id>/results`, including the original `#/climb/F01.01/results` route. Learning history shows prior submissions, and reopening a completed lesson displays the saved result. The pilot records checking time rather than time spent studying. Storage limits and browser data clearing apply. Use one editing tab per session. Learner evidence stays in the browser.
 
 ### The Gym
 
@@ -69,7 +69,7 @@ The app requests DM Sans and Space Grotesk from Google Fonts. System sans-serif 
 | src/mentoring | Consented context and reasoning-feedback contracts |
 | docs/architecture | Accepted amendments and reversible engineering decisions |
 
-Contracts reserve stable IDs, prerequisites, teaching blocks, mentor tips, and grading configuration. They establish boundaries only. Future structured content needs runtime validation and executable content QA before publication. The interface supports future language adapters such as SQL without shipping an engine or full plugin system now.
+The ordered Course Pack feeds the same lesson player, prerequisite gates and reports. See [curriculum authoring and validation](docs/curriculum-authoring.md) and the [Milestone 4A teaching review](docs/review/milestone-4a/README.md).
 
 ## Educational and development specifications
 

@@ -26,16 +26,20 @@ export const areas = [
 ] as const;
 
 export type AreaId = typeof areas[number]['id'];
-export const pilotPath = 'climb/F01.01';
-export const pilotResultsPath = 'climb/F01.01/results';
+export type LessonPath = `climb/${string}`;
+export const lessonPath = (id: string, results = false): LessonPath =>
+  `climb/${id}${results ? '/results' : ''}`;
+export function parseLessonPath(path: string) {
+  const match = /^climb\/([\w.-]+)(\/results)?$/.exec(path);
+  return match ? { id: match[1], results: !!match[2] } : undefined;
+}
 export const gymWorkoutPath = 'gym/workout';
 export const gymResultsPath = 'gym/results';
-export type Route = 'home' | AreaId | typeof pilotPath | typeof pilotResultsPath | typeof gymWorkoutPath | typeof gymResultsPath;
+export type Route = 'home' | AreaId | LessonPath | typeof gymWorkoutPath | typeof gymResultsPath;
 
 export function readRoute(): Route {
   const path = window.location.hash.replace(/^#\/?/, '');
   if (path === gymWorkoutPath || path === gymResultsPath) return path;
-  if (path === pilotResultsPath) return pilotResultsPath;
-  if (path === pilotPath) return pilotPath;
+  if (parseLessonPath(path)) return path as LessonPath;
   return areas.find((area) => area.id === path)?.id ?? 'home';
 }

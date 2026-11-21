@@ -1,7 +1,8 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { useTheme } from '../platform/useTheme';
-import { PilotLesson, pilotTitle } from '../learning/PilotLesson';
-import { areas, gymResultsPath, gymWorkoutPath, pilotPath, pilotResultsPath, readRoute } from './areas';
+import { Climb } from './Climb';
+import { course, coursePack } from '../courses/course';
+import { areas, gymResultsPath, gymWorkoutPath, parseLessonPath, readRoute } from './areas';
 import type { AreaId } from './areas';
 
 const Gym = lazy(async () => ({ default: (await import('../gym/Gym')).Gym }));
@@ -37,15 +38,15 @@ function Home() {
               <p className="card-verb">{area.verb}</p>
               <div className="card-title"><h2>{area.title}</h2><span className="arrow" aria-hidden="true">↗</span></div>
               <p className="card-description">{area.description}</p>
-              <span className="availability">{area.id === 'climb' ? 'Pilot available' : area.id === 'gym' ? 'Workout available' : 'Coming next'}</span>
+              <span className="availability">{area.id === 'climb' ? 'Lessons available' : area.id === 'gym' ? 'Workout available' : 'Coming next'}</span>
             </div>
           </a>
         ))}
       </section>
       <aside className="course-note" aria-label="First course pack">
         <div className="course-label"><span className="course-dot" /> First course pack</div>
-        <div><h2>Python &amp; AI interview skills</h2><p>From knowing how it works to writing it yourself.</p></div>
-        <span className="course-status">One pilot lesson</span>
+        <div><h2>{coursePack.title}</h2><p>From knowing how it works to writing it yourself.</p></div>
+        <span className="course-status">{course.length} {course.length === 1 ? 'lesson' : 'lessons'} available</span>
       </aside>
     </>
   );
@@ -61,19 +62,12 @@ function AreaPage({ route }: { route: AreaId }) {
           <p className="eyebrow">{area.verb}</p>
           <h1 id="area-heading">{area.title}</h1>
           <p className="detail-description">{area.detail}</p>
-          {route === 'climb' ? (
-            <div className="coming-panel">
-              <span className="availability">One pilot lesson</span>
-              <h2>F01.01 · {pilotTitle}</h2>
-              <p>Practise the lesson and run real Python. This pilot sits outside curriculum progression.</p>
-              <a className="pilot-link" href={`#/${pilotPath}`}>Open pilot lesson →</a>
-            </div>
-          ) : <div className="coming-panel">
+          <div className="coming-panel">
             <span className="availability">Coming next</span>
             <h2>This space is taking shape.</h2>
             <p>{area.upcoming}</p>
-            <p className="muted">This release includes navigation and appearance settings. Learning activities will arrive in future milestones.</p>
-          </div>}
+            <p className="muted">Learning activities will arrive in future milestones.</p>
+          </div>
         </div>
         <Artwork area={area.id} />
       </div>
@@ -83,6 +77,7 @@ function AreaPage({ route }: { route: AreaId }) {
 
 export function App() {
   const [route, setRoute] = useState(readRoute);
+  const lessonRoute = parseLessonPath(route);
   const mainRef = useRef<HTMLElement>(null);
   const previousRoute = useRef(route);
   const { theme, toggleTheme, saveError } = useTheme();
@@ -100,7 +95,11 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    const title = route === gymWorkoutPath ? 'The Gym · Workout' : route === gymResultsPath ? 'The Gym · Results' : route === pilotResultsPath ? 'F01.01 · Lesson report' : route === pilotPath ? pilotTitle : areas.find((area) => area.id === route)?.title ?? 'Make it your own.';
+    const lessonRoute = parseLessonPath(route);
+    const lesson = lessonRoute && course.find((item) => item.lesson.id === lessonRoute.id)?.lesson;
+    const title = route === gymWorkoutPath ? 'The Gym · Workout' : route === gymResultsPath ? 'The Gym · Results'
+      : lesson ? lessonRoute.results ? lesson.id + ' · Lesson report' : lesson.title
+      : areas.find((area) => area.id === route)?.title ?? 'Make it your own.';
     document.title = `ENNTOR — ${title}`;
     if (previousRoute.current !== route) {
       mainRef.current?.focus();
@@ -120,7 +119,7 @@ export function App() {
         <a className="brand" href="#/" aria-label="ENNTOR home"><span className="brand-mark" aria-hidden="true"><i /><i /><i /></span>ENNTOR<span className="brand-period">.</span></a>
         <nav aria-label="Main navigation">
           <a href="#/" aria-current={route === 'home' ? 'page' : undefined}>Home</a>
-          {areas.map((area) => <a key={area.id} href={`#/${area.id}`} aria-current={route === area.id ? 'page' : (route === pilotPath || route === pilotResultsPath) && area.id === 'climb' ? 'location' : (route === gymWorkoutPath || route === gymResultsPath) && area.id === 'gym' ? 'location' : undefined}>{area.title}</a>)}
+          {areas.map((area) => <a key={area.id} href={`#/${area.id}`} aria-current={route === area.id ? 'page' : lessonRoute && area.id === 'climb' ? 'location' : (route === gymWorkoutPath || route === gymResultsPath) && area.id === 'gym' ? 'location' : undefined}>{area.title}</a>)}
         </nav>
         <button className="theme-toggle" onClick={toggleTheme} aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`} title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}>
           <span aria-hidden="true">{theme === 'light' ? '☾' : '☀'}</span>
@@ -128,7 +127,7 @@ export function App() {
       </header>
       {saveError && <p className="save-warning" role="status">Your theme changed, but this browser couldn’t save it for your next visit.</p>}
       <main id="main" ref={mainRef} tabIndex={-1}>
-        {route === 'home' ? <Home /> : (route === 'gym' || route === gymWorkoutPath || route === gymResultsPath) ? <Suspense fallback={<p role="status">Loading The Gym…</p>}><Gym view={route === gymWorkoutPath ? 'workout' : route === gymResultsPath ? 'results' : 'home'} /></Suspense> : route === pilotPath || route === pilotResultsPath ? <PilotLesson results={route === pilotResultsPath} /> : <AreaPage route={route} />}
+        {route === 'home' ? <Home /> : (route === 'gym' || route === gymWorkoutPath || route === gymResultsPath) ? <Suspense fallback={<p role="status">Loading The Gym…</p>}><Gym view={route === gymWorkoutPath ? 'workout' : route === gymResultsPath ? 'results' : 'home'} /></Suspense> : route === 'climb' || lessonRoute ? <Climb route={lessonRoute} /> : <AreaPage route="room" />}
       </main>
       <footer className="site-footer"><p>Progress you can put to work.</p><p>ENNTOR <span aria-hidden="true">/</span> Learning pilot</p></footer>
     </div>

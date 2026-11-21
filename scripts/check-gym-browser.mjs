@@ -57,6 +57,7 @@ try {
   await press('Open warm-up');
   await find(/one component is absent/, warmUp).waitFor();
   await source(visitors).waitFor();
+  assert.equal(await button('Run', visitors).count(), 0);
   assert.doesNotMatch(await warmUp.innerText(), /cargo_weight|4 kg|pallets|gross/);
   await check(visitors, 'def visitors(confirmed, extra):\n    return confirmed + extra * 2', 'All public cases passed.');
   await press('Complete warm-up');
@@ -124,7 +125,8 @@ try {
   await page.keyboard.press('Tab');
   assert.equal(await source(cargo).evaluate(node => node === document.activeElement), false);
   await source(cargo).fill('while True:\n    pass');
-  await press('Run', cargo);
+  assert.equal(await button('Run', cargo).count(), 0);
+  await press('Check solution', cargo);
   await page.waitForTimeout(850);
   await press('Stop', cargo);
   await find('Execution stopped.', cargo).waitFor();

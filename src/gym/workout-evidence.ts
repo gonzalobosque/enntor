@@ -1,6 +1,6 @@
 import type { ContentReference, HintLevel } from '../courses/contracts';
 import type { Submission, Sweat } from '../learning/evidence';
-import type { Diagnostic } from './diagnostic';
+import type { Diagnostic } from '../execution/diagnostics';
 import type { Recommendation } from './recommendation';
 
 interface WorkoutRecord {
