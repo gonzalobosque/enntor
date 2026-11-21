@@ -253,7 +253,7 @@ function LessonSession({ evidence, item }: { evidence: ReturnType<typeof useEvid
         </section>}
         {state.modified && session.buildPlan?.correct && editor(build, 'Build')}
         {state.built && editor(make, 'Make')}
-        {state.built && assistance && !state.independent && !showTransfer && <div className="pilot-controls">
+        {state.built && state.made.length > 0 && (sequence.offerTransferPractice || (assistance && !state.independent)) && !showTransfer && <div className="pilot-controls">
           <p>{requiresTransfer ? 'Your Make result used solution help. Complete the final MAKE exercise to finish the lesson.'
             : 'You can finish now or do another MAKE exercise for practice.'}</p>
           <button disabled={!!busyCount} onClick={() => update((old) => ({ ...old, transferOpenedAt: now(), openedTransfer: { id: transfer.id, version: transfer.version } }))}>

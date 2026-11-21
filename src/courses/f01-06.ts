@@ -1,0 +1,171 @@
+import type { LessonSequence } from './load-course-pack';
+import { call, code, emphasis, foundationLesson, ladder, listCase, prediction, symbol, task, token } from './python-foundation';
+
+const id = 'F01.06';
+const concept = 'python.state-tracing';
+const compareStarter = 'from copy import deepcopy\n\ndef record_batch(rows, reading):\n    rows[0].append(reading)\n    return len(rows[0])\n\ndef compare_batches(rows, reading):\n    before = rows.copy()\n    first = record_batch(rows, reading)\n    second = record_batch(rows, reading + 1)\n    return [before, first + second * 2]';
+
+export const f0106Exercises = [
+  prediction(id, concept, 'from copy import deepcopy\ndef record(rows, value):\n    rows[0].append(value)\n    return len(rows[0])\nsource = [[]]\nview = source.copy()\nfirst = record(view, 4)\nview = deepcopy(source)\nsecond = record(view, 8)\nprint(first + second * 2)', 5),
+  task(id, concept, {
+    key: 'modify', kind: 'modify', title: 'Keep the original batch snapshot in the report', entryPoint: 'compare_batches',
+    prompt: ['This function records two successive readings in the caller’s first batch. Keep that recording behavior, but make the report show the batches ',
+      emphasis('before either update'), '.\n\n', call('compare_batches()'), ' takes ', symbol('rows'),
+      ', at least one batch, each a separate list of integers, and ', symbol('reading'), ', an integer. The updates add that reading, then the reading plus one, to the end of the first batch. ',
+      'The score gives the first updated batch size its usual weight and the second size double weight. Return [earlier batch contents, integer score] in that order.\n\n',
+      'For ([[4], [8]], 3), the first batch grows to [4, 3], then [4, 3, 4]. Return [[[4], [8]], 8] because the two sizes are 2 and 3. ',
+      'The caller’s first batch must keep both new entries. An individual batch may start empty.'],
+    starter: compareStarter,
+    hints: ladder('Which of the two report items changes when you run the starter? At what point should it be frozen?',
+      ['Both ', call('record_batch()'), ' calls reach the original first row. Ask whether the earlier report holds that same row.'],
+      ['Freeze inner as well as outer contents with ', call('deepcopy()'), ' before the calls. The first row in that snapshot stays [4], while the real row grows to three entries.'],
+      compareStarter.replace('before = rows.copy()', 'before = deepcopy(rows)')),
+    cases: [
+      listCase('two', [[[4], [8]], 3], [[[4], [8]], 8], [[4, 3, 4], [8]]),
+      listCase('empty-row', [[[]], -1], [[[]], 5], [[-1, 0]]),
+      listCase('dup', [[[4, 4]], 4], [[[4, 4]], 11], [[4, 4, 4, 5]]),
+      listCase('negative', [[[-7], [], [1]], -3], [[[-7], [], [1]], 8], [[-7, -3, -2], [], [1]]),
+      listCase('two-empty', [[[], []], 0], [[[], []], 5], [[0, 1], []]),
+      listCase('long', [[[2, 6, 0], [5]], 2], [[[2, 6, 0], [5]], 14], [[2, 6, 0, 2, 3], [5]]),
+    ],
+  }),
+  task(id, concept, {
+    key: 'build', kind: 'write', title: 'Score a rehearsal with two events', entryPoint: 'count_updates',
+    prompt: ['Complete ', call('count_updates()'), '. It takes ', symbol('log'), ' (a nonempty list of separate lists of integers), ',
+      symbol('morning'), ' and ', symbol('evening'), ' (integers). Rehearse adding the morning event and then the evening event to the end of the same first row. ',
+      'The caller’s log stays unchanged. Each event reports the first row’s length after that event. The final integer score counts the morning length once and the evening length twice. ',
+      'For ([[6]], 7, 8), the rehearsal sizes are 2 and 3, so return 8. A row may start empty.'],
+    starter: 'from copy import deepcopy\n\ndef record_event(log, event):\n    log[0].append(event)\n    return len(log[0])\n\ndef count_updates(log, morning, evening):\n    rehearsal = deepcopy(log)\n    first = record_event(rehearsal, morning)\n    pass  # Rehearse the second event and return the score.',
+    hints: ladder('Which list does the evening event continue from: the original log or the log after the morning event?',
+      ['The first call already records the size in ', symbol('first'), '. The next call can use the same ', symbol('rehearsal'), ' list.'],
+      ['Both calls update one rehearsal. For initial size 1, the lengths are 2 then 3. The return is ', code('2 + 3 * 2'), ', or 8.'],
+      'from copy import deepcopy\n\ndef record_event(log, event):\n    log[0].append(event)\n    return len(log[0])\n\ndef count_updates(log, morning, evening):\n    rehearsal = deepcopy(log)\n    first = record_event(rehearsal, morning)\n    second = record_event(rehearsal, evening)\n    return first + second * 2'),
+    cases: [
+      listCase('one', [[[6]], 7, 8], 8), listCase('empty-first', [[[]], 0, 0], 5),
+      listCase('two-readings', [[[4, 5], []], 9, 1], 11), listCase('negative', [[[-2], [-5]], -9, -7], 8),
+      listCase('long', [[[1, 2, 3, 4]], 0, 5], 17), listCase('leading-empty', [[[], [2, 5, 6]], 7, 9], 5),
+    ],
+  }),
+  task(id, concept, {
+    key: 'make', kind: 'write', title: 'Report two rehearsal checkpoints', entryPoint: 'simulate_rounds',
+    prompt: ['A rehearsal must show two checkpoints in a set of recording rounds. The saved rounds must stay untouched.\n\n',
+      'Define ', call('simulate_rounds()'), ' with ', symbol('rounds'), ' (a nonempty list of separate lists of integers), ',
+      symbol('extra'), ' (an integer), and ', symbol('reset'), ' (an integer). Inner lists may be empty.\n\n',
+      emphasis('Checkpoint 1'), ': add the extra entry to the end of the first round. ', emphasis('Checkpoint 2'),
+      ': the first round starts over with the reset entry as its only item. The other rounds stay the same throughout.\n\n',
+      'Return [checkpoint 1 rounds, checkpoint 2 rounds]. Each checkpoint contains all the rounds as they stand at that moment. The caller’s real rounds must stay unchanged. ',
+      'For ([[4], [8]], 3, 9), return [[[4, 3], [8]], [[9], [8]]] and leave the source as [[4], [8]].'],
+    hints: ladder('If the first round starts empty and the inputs are 3 and 9, which entry belongs to each checkpoint?',
+      'One update changes the contents of a row. The next replaces the row as a whole. The earlier checkpoint must remain readable after both updates.',
+      ['Keep the rehearsal separate from the source. Record an independent snapshot after adding 3. Then replace the first row in the rehearsal. The report contains the snapshot with [4, 3] and the final rehearsal with [9].'],
+      'from copy import deepcopy\n\ndef simulate_rounds(rounds, extra, reset):\n    rehearsal = deepcopy(rounds)\n    rehearsal[0].append(extra)\n    first = deepcopy(rehearsal)\n    rehearsal[0] = [reset]\n    return [first, rehearsal]'),
+    cases: [
+      listCase('two', [[[4], [8]], 3, 9], [[[4, 3], [8]], [[9], [8]]]),
+      listCase('empty-row', [[[]], 3, 9], [[[3]], [[9]]]),
+      listCase('same', [[[]], 3, 3], [[[3]], [[3]]]),
+      listCase('negative', [[[-5, 0], []], -1, -2], [[[-5, 0, -1], []], [[-2], []]]),
+      listCase('keep-all-rows', [[[1], [], [3, 4]], 0, 1], [[[1, 0], [], [3, 4]], [[1], [], [3, 4]]]),
+      listCase('duplicate', [[[1], [1]], 1, 1], [[[1, 1], [1]], [[1], [1]]]),
+    ],
+  }),
+  task(id, concept, {
+    key: 'make-transfer', kind: 'transfer', title: 'Publish checkpoints of a live adjustment', entryPoint: 'publish_rounds',
+    prompt: ['A sensor records two adjustments to the first reading of the first round. This time the updates are ',
+      emphasis('live'), ': the caller must see the final reading. The audit report also needs all the rounds at the moment of the first adjustment.\n\n',
+      'Define ', call('publish_rounds()'), ' with ', symbol('rounds'), ' (a nonempty list of separate lists of integers with a nonempty first row), ',
+      symbol('increase'), ' and ', symbol('extra'), ' (signed integers). A signed adjustment adds its value, so a negative value lowers a reading. ',
+      'First adjust the reading by twice the initial adjustment. Then adjust that new reading by the extra amount. All other readings stay unchanged.\n\n',
+      'Return [all round contents after the first adjustment, final reading]. For ([[5, 1], [8]], 2, −3), the reading goes 5 → 9 → 6. ',
+      'Return [[[9, 1], [8]], 6]. The caller ends with [[6, 1], [8]].'],
+    hints: ladder('Draw a three-column timeline: initial reading, first adjustment, and second adjustment. When does the audit capture its copy?',
+      'The two adjustments affect the same live cell. The report’s first item needs an earlier state that the second update cannot change.',
+      ['For 5, 2 and −3, add 4 to get 9 and capture all rounds at 9. Apply −3 to the live reading to get 6. The report keeps 9 in its snapshot and returns 6 as the latest reading.'],
+      'from copy import deepcopy\n\ndef adjust_first(rounds, change):\n    rounds[0][0] += change\n    return rounds[0][0]\n\ndef publish_rounds(rounds, increase, extra):\n    adjust_first(rounds, increase * 2)\n    checkpoint = deepcopy(rounds)\n    final = adjust_first(rounds, extra)\n    return [checkpoint, final]'),
+    cases: [
+      listCase('two', [[[5, 1], [8]], 2, -3], [[[9, 1], [8]], 6], [[6, 1], [8]]),
+      listCase('one', [[[2]], -2, 1], [[[-2]], -1], [[-1]]),
+      listCase('zero-extra', [[[4], []], -2, 0], [[[0], []], 0], [[0], []]),
+      listCase('zero-first', [[[1], [5]], 0, -3], [[[1], [5]], -2], [[-2], [5]]),
+      listCase('negative', [[[-4, -3]], -5, -1], [[[-14, -3]], -15], [[-15, -3]]),
+      listCase('returns-to-start', [[[4, 0], [4]], 3, -6], [[[10, 0], [4]], 4], [[4, 0], [4]]),
+    ],
+  }),
+];
+
+export const f0106Lesson = {
+  ...foundationLesson({
+    id, title: 'State tracing laboratory', prerequisites: ['F01.05'],
+    objectives: ['Dry-run a multi-call program while tracking bindings, identity, contents and returned values.', 'Integrate evaluation order, aliasing, mutation and copying when constructing a stateful function.'],
+    teachingBlocks: [
+      { id: id + '.intro', type: 'paragraph', content: ['A report drifts when it still shares the state that a later call edits. Before running a short script, mark each name’s object, the contents of that object, and any value a call returns. Track identity and contents in separate columns. When a call begins, its parameter points to the object the caller passed.'] },
+      { id: id + '.calls', type: 'worked-example', language: 'python',
+        code: 'from copy import deepcopy\ndef record(readings, value):\n    readings.append(value)\n    return len(readings)\nsource = [[4]]\ntrial = source.copy()\nfirst = record(trial[0], 7)\ntrial = deepcopy(source)\nsecond = record(trial[0], 9)\nprint(source, trial, first + second * 2)',
+        explanation: ['At the first call, the outer lists differ, but ', code('trial[0]'), ' and ', code('source[0]'),
+          ' refer to the same row. That row becomes [4, 7] and ', symbol('first'), ' gets 2. Then ', call('deepcopy()'),
+          ' gives the rebound ', symbol('trial'), ' a different row. The second call extends only that row to [4, 7, 9] and ', symbol('second'),
+          ' gets 3. The multiplication runs first when calculating the score, giving 8. An empty starting row would still be shared before the first call.'],
+      },
+      { id: id + '.replace', type: 'worked-example', language: 'python',
+        code: 'source = [[4]]\nview = source[:]\nview[0] = [9]\nprint(view is source, view[0] is source[0], source, view)',
+        explanation: ['This time the assignment replaces the first slot of a separate outer list. It never edits the source row. Both identity checks are false. ',
+          symbol('source'), ' remains [[4]] and ', symbol('view'), ' becomes [[9]].'],
+      },
+      { id: id + '.warning', type: 'warning', content: ['After a function returns, its local names go out of scope. An edit to a shared object remains visible to the caller.'] },
+    ],
+    mentorTips: [{ id: id + '.tip-columns', text: 'Keep separate identity and contents columns as lists are assigned, sliced and mutated.', sourceRefs: ['P03'] }],
+  }, f0106Exercises),
+  estimatedMinutes: 25,
+};
+
+export const f0106Sequence: LessonSequence = {
+  learnTitle: 'Dry-run the program one call at a time',
+  titleAccent: 'laboratory',
+  offerTransferPractice: true,
+  predictionCoaching: {
+    explanation: ['The first call adds 4 to the shared empty row and returns 1. The deep copy starts from that updated state. The second call adds 8 to the isolated row and returns 2. The printed score is ', code('1 + 2 * 2'), ', or 5.'],
+    followUp: {
+      code: 'def record(row, value):\n    row.append(value)\n    return len(row)\nsource = [[1]]\nview = source[:]\nrecord(view[0], 2)\nview[0] = [9]\nrecord(view[0], 3)\nprint(len(source[0]))', expected: 2,
+      hint: ['For each call, check which object occupies the first slot of ', symbol('view'), '.'],
+      explanation: ['The first call changes the shared row. The replacement assigns a new first row only in ', symbol('view'),
+        '. The second call cannot reach the original row through that slot.'],
+    },
+  },
+  trace: {
+    id: id + '.multi-call-state', version: '1.0.0', title: 'Dry-run the calls and the score',
+    prompt: ['For each listed line, compare the first row of ', symbol('working'), ' to the first row of ', symbol('source'), ' by ',
+      emphasis('identity'), '. Enter ', token('yes'), ' or ', token('no'), '. Then enter the source first row length as an integer. Finally enter the value of ',
+      symbol('score'), ' as an integer, or ', token('unbound'), ' if it has yet to be assigned.'],
+    source: 'from copy import deepcopy\ndef record(rows, value):\n    rows[0].append(value)\n    return len(rows[0])\nsource = [[4]]\nworking = source.copy()\nfirst = record(working, 7)\nworking = deepcopy(source)\nsecond = record(working, 9)\nscore = first + second * 2',
+    columns: ['Same first row object?', 'Source first row length', 'Score'],
+    rows: [
+      { label: 'Line 7', expected: ['yes', '2', 'unbound'] }, { label: 'Line 8', expected: ['no', '2', 'unbound'] },
+      { label: 'Line 10', expected: ['no', '2', '8'] },
+    ],
+    help: {
+      concept: ['Write the object the function receives at each call before counting or calculating anything.'],
+      guidance: ['Resolve each call and save its return value. For the second call, follow ', symbol('working'),
+        ' after the rebinding. The multiplication in the score uses the second return.'],
+      worked: [
+        ['The first call receives a shallow copy. The first row is shared, so the source first row becomes [4, 7].'],
+        [symbol('working'), ' now holds an independent copy of the source in its current state, including [4, 7].'],
+        ['The second call affects only the new row and returns 3. The source keeps two items. ',
+          symbol('score'), ' is ', code('2 + 3 * 2'), ', or 8.'],
+      ],
+    },
+    mistake: { id: 'sum-before-multiply', message: 'Your final row gives a score of 10. With return values 2 and 3, which part of the expression does Python evaluate first?', cells: [
+      { row: 2, column: 0, value: 'no' }, { row: 2, column: 1, value: '2' }, { row: 2, column: 2, value: '10' },
+    ] },
+  },
+  buildPlan: {
+    prompt: ['During rehearsal, both events enter the same first row. Count its size after each event. The score is the first size plus twice the second. ',
+      'The caller’s starting row stays unchanged. If it starts at [6] and the events are 7 and 8, what should be returned?'],
+    example: { input: [[[6]], 7, 8], expected: 8 },
+    options: [{ id: 'shared-rehearsal', text: '8, using rehearsal sizes 2 and 3.' },
+      { id: 'restart', text: '6, using two separate rehearsals of size 2.' },
+      { id: 'grouped', text: '10, doubling the sum of the two sizes.' }],
+    correct: 'shared-rehearsal',
+    syntax: ['Pass the updated rehearsal to the second ', call('record_event()'), '. Use the two returned sizes to calculate the score.'],
+    retry: 'Use the same rehearsal for both events and double only the size from the second event.',
+    report: 'The plan traces successive calls on the same rehearsal and weights the results in evaluation order.',
+  },
+};

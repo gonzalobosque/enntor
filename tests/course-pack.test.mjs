@@ -5,7 +5,7 @@ import { validateContent } from '../scripts/content/validate.mjs';
 
 test('the curriculum unit has executable examples, references and discriminating wrong solutions', async () => {
   const reports = await validateContent();
-  assert.deepEqual(reports.map(report => report.split(' ')[0]), ['F01.01', 'F01.02', 'F01.03']);
+  assert.deepEqual(reports.map(report => report.split(' ')[0]), ['F01.01', 'F01.02', 'F01.03', 'F01.04', 'F01.05', 'F01.06']);
 });
 
 test('pack loader orders prerequisites and rejects cross-lesson or duplicate activities', async () => {
@@ -98,6 +98,45 @@ test('state and identity reasoning are checked directly and versioned independen
     const completed = { ...session, traces: [direct, handoff] };
     assert.equal(evaluate(completed).canFinish, true);
     assert.deepEqual(finalizeEvidence(completed, evaluate(completed)).completion.traceIds, ['direct', 'handoff']);
+  } finally {
+    await vite.close();
+  }
+});
+
+test('structured grading distinguishes a correct return from caller-visible state', async () => {
+  const vite = await createServer({ configFile: false, optimizeDeps: { noDiscovery: true },
+    server: { middlewareMode: true, ws: false } });
+  try {
+    const { course } = await vite.ssrLoadModule('/src/courses/course.ts');
+    const { gradeExercise, sameCaseValue } = await vite.ssrLoadModule('/src/execution/grading.ts');
+    const { validatePythonSequence } = await vite.ssrLoadModule('/src/courses/load-course-pack.ts');
+    const item = course.find(({ lesson }) => lesson.id === 'F01.05');
+    const exercise = structuredClone(item.make);
+    const cases = exercise.grading.publicCases;
+    const first = cases[0];
+    function engine(outcome) {
+      return { id: exercise.execution.engineId, async execute(request) {
+        assert.equal(request.observeArguments, true);
+        const test = cases.find(item => sameCaseValue(item.input, request.input));
+        assert(test);
+        return { status: 'completed', value: structuredClone(test.expected),
+          argumentsAfter: structuredClone(test.expectedArguments), ...outcome(test) };
+      } };
+    }
+    const check = engine => gradeExercise(engine, exercise, 'synthetic function', new AbortController().signal);
+    assert.equal((await check(engine(() => ({})))).grade.verdict, 'passed');
+    const shape = await check(engine(test => test === first ? { value: test.expected.flat() } : {}));
+    assert.equal(shape.grade.verdict, 'failed');
+    assert.equal(shape.grade.evidence[0].passed, false);
+    const changed = await check(engine(test => test === first ? { argumentsAfter: [test.expected, ...test.input.slice(1)] } : {}));
+    assert.equal(changed.grade.verdict, 'failed');
+    assert.deepEqual(changed.runs[0].value, first.expected);
+    assert.match(changed.grade.evidence[0].message, /Expected arguments after call/);
+    assert.equal((await check(engine(() => ({ argumentsAfter: undefined })))).grade.verdict, 'failed');
+    assert.equal((await check(engine(() => ({ status: 'cancelled' })))).grade.verdict, 'ungraded');
+
+    delete first.expectedArguments;
+    assert.throws(() => validatePythonSequence({ ...item, make: exercise }, item.prediction.execution), /case data/);
   } finally {
     await vite.close();
   }

@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { isDeepStrictEqual } from 'node:util';
 import { readFile } from 'node:fs/promises';
 import { loadPyodide } from 'pyodide';
 import { createServer } from 'vite';
@@ -27,9 +28,9 @@ export async function validateContent(lessonIds = []) {
     const output = (source) => run('from contextlib import redirect_stdout\nfrom io import StringIO\n_stream = StringIO()\nwith redirect_stdout(_stream):\n    exec(compile(_snippet, "example.py", "exec"), {})',
       '_stream.getvalue().rstrip("\\n")', { _snippet: source });
     const names = (source) => JSON.parse(run('import ast, json\n_tree = ast.parse(_snippet)',
-      'json.dumps([node.id for node in ast.walk(_tree) if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Store)] + [node.arg for node in ast.walk(_tree) if isinstance(node, ast.arg)] + [node.name for node in ast.walk(_tree) if isinstance(node, ast.FunctionDef)])',
+      'json.dumps([node.id for node in ast.walk(_tree) if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Store)] + [node.arg for node in ast.walk(_tree) if isinstance(node, ast.arg)] + [node.name for node in ast.walk(_tree) if isinstance(node, ast.FunctionDef)] + [node.attr for node in ast.walk(_tree) if isinstance(node, ast.Attribute)] + [node.asname or node.name for node in ast.walk(_tree) if isinstance(node, ast.alias)])',
       { _snippet: source }));
-    const allowed = (...sources) => ['print', 'int', ...sources.flatMap(names)];
+    const allowed = (...sources) => ['print', 'int', 'len', 'list', ...sources.flatMap(names)];
     const checkNames = (prose, symbols, label) => { if (prose) assert.deepEqual(unknownTeachingNames(prose, symbols), [], label); };
     const ordered = lessonIds.length ? lessonIds.map(id => {
       const item = course.find(({ lesson }) => lesson.id === id);
@@ -90,40 +91,46 @@ export async function validateContent(lessonIds = []) {
       const results = [];
       for (const [role, key] of [['modification', 'modify'], ['build', 'build'], ['make', 'make'], ['transfer', 'transfer']]) {
         const exercise = tasks[role];
-        const { reference, wrong, misses } = manifest.exercises[key];
+        const { reference = exercise.hints.at(-1)?.solutionCode, wrong, misses } = manifest.exercises[key];
+        assert(reference, exercise.id + ' missing reference');
         const { entryPoint } = exercise.execution;
         const cases = exercise.grading.publicCases;
-        const execute = (source, input) => run(source,
-          `__import__('json').dumps(${entryPoint}(*__import__('json').loads(_args)), allow_nan=False)`,
-          { _args: JSON.stringify(input) });
+        const execute = (source, { input, expectedArguments }) => {
+          const observe = expectedArguments === undefined ? '_returned' : '[_returned, _values]';
+          return JSON.parse(run(source, `_values = __import__('json').loads(_args)\n_returned = ${entryPoint}(*_values)\n__import__('json').dumps(${observe}, allow_nan=False)`,
+            { _args: JSON.stringify(input) }));
+        };
+        const expectedCase = ({ expected, expectedArguments }) =>
+          expectedArguments === undefined ? expected : [expected, expectedArguments];
         if (!pilot && role === 'build') {
           const example = sequence.buildPlan.example;
-          assert(example && cases.some(test => JSON.stringify(test.input) === JSON.stringify(example.input) &&
-            test.expected === example.expected), exercise.id + ' planning example matches a public case');
-          assert.equal(execute(reference, example.input), JSON.stringify(example.expected), exercise.id + ' planning example result');
+          const matching = example && cases.find(test => isDeepStrictEqual(test.input, example.input) && isDeepStrictEqual(test.expected, example.expected));
+          assert(matching, exercise.id + ' planning example matches a public case');
+          assert.deepEqual(execute(reference, matching), expectedCase(matching), exercise.id + ' planning example result');
         }
         const starterEmpty = role === 'make' || role === 'transfer';
         if (starterEmpty) {
           assert.match(exercise.starterCode, /^(?:\s*#[^\n]*\n?)*\s*$/, exercise.id + ' blank starter');
-          assert.throws(() => execute(exercise.starterCode, cases[0].input), /NameError/);
+          assert.throws(() => execute(exercise.starterCode, cases[0]), /NameError/);
         } else {
-          assert.match(exercise.starterCode, /^def /, exercise.id + ' scaffold');
-          assert(cases.some(({ input, expected }) => execute(exercise.starterCode, input) !== JSON.stringify(expected)), exercise.id + ' starter already passes');
+          assert.match(exercise.starterCode, new RegExp('^def ' + entryPoint + '\\(', 'm'), exercise.id + ' scaffold entry point');
+          assert(cases.some(fixture => !isDeepStrictEqual(execute(exercise.starterCode, fixture), expectedCase(fixture))), exercise.id + ' starter already passes');
         }
         assert(cases.some(({ id }) => id === misses), exercise.id + ' missing discriminating case');
-        for (const { id, input, expected } of cases) {
-          assert.equal(execute(reference, input), JSON.stringify(expected), exercise.id + ' reference · ' + id);
+        for (const fixture of cases) {
+          const { id } = fixture;
+          assert.deepEqual(execute(reference, fixture), expectedCase(fixture), exercise.id + ' reference · ' + id);
           const alternative = manifest.alternatives?.[key];
-          if (alternative) assert.equal(execute(alternative, input), JSON.stringify(expected), exercise.id + ' alternative · ' + id);
-          const negative = execute(wrong, input);
-          if (id === misses) assert.notEqual(negative, JSON.stringify(expected), exercise.id + ' wrong solution survived');
+          if (alternative) assert.deepEqual(execute(alternative, fixture), expectedCase(fixture), exercise.id + ' alternative · ' + id);
+          const negative = execute(wrong, fixture);
+          if (id === misses) assert.notDeepEqual(negative, expectedCase(fixture), exercise.id + ' wrong solution survived');
         }
         const levels = exercise.hints.map(({ level }) => level);
         assert.deepEqual(levels, [...new Set(levels)].sort(), exercise.id + ' hint order');
         for (const hint of exercise.hints) {
           if (hint.solutionCode) {
             assert.equal(hint.level, 'H4', exercise.id + ' revealed code level');
-            for (const { input, expected } of cases) assert.equal(execute(hint.solutionCode, input), JSON.stringify(expected));
+            for (const fixture of cases) assert.deepEqual(execute(hint.solutionCode, fixture), expectedCase(fixture));
           }
           checkNames(hint.text, allowed(exercise.starterCode, reference), exercise.id + ' hint wording');
         }

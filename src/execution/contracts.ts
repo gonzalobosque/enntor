@@ -10,6 +10,7 @@ export interface ExecutionRequest {
   source: string;
   entryPoint?: string;
   input?: JsonValue;
+  observeArguments?: boolean;
   limits: { timeoutMs: number; memoryMb: number; outputBytes: number };
 }
 
@@ -21,6 +22,7 @@ export interface ExecutionResult {
   stdout: string;
   stderr: string;
   value?: JsonValue;
+  argumentsAfter?: JsonValue[];
   error?: { message: string; line?: number; traceback?: string };
   durationMs: number;
 }

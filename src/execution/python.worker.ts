@@ -37,15 +37,17 @@ self.onmessage = async ({ data: request }: MessageEvent<ExecutionRequest>) => {
       python.runPython(request.source, { globals: namespace, filename: 'exercise.py' });
       if (request.entryPoint) {
         namespace.set('_enntor_args_json', JSON.stringify(request.input ?? []));
+        const observation = request.observeArguments ? '[_enntor_return, _enntor_args]' : '_enntor_return';
         const serialized = python.runPython(
-          `import json as _enntor_json\n_enntor_json.dumps(${request.entryPoint}(*_enntor_json.loads(_enntor_args_json)), allow_nan=False)`,
+          `import json as _enntor_json\n_enntor_args = _enntor_json.loads(_enntor_args_json)\n_enntor_return = ${request.entryPoint}(*_enntor_args)\n_enntor_json.dumps(${observation}, allow_nan=False)`,
           { globals: namespace, filename: 'check.py' },
         );
         if (serialized.length > request.limits.outputBytes) {
           outputLimited = true;
           throw new Error('Python exceeded the return value limit.');
         }
-        result.value = JSON.parse(serialized);
+        if (request.observeArguments) [result.value, result.argumentsAfter] = JSON.parse(serialized);
+        else result.value = JSON.parse(serialized);
       }
     } finally {
       namespace.destroy();

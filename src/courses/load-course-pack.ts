@@ -1,10 +1,11 @@
 import type { TraceCheck } from '../learning/trace';
-import type { CoursePack, Exercise, TeachingProse } from './contracts';
+import type { CoursePack, Exercise, JsonValue, TeachingProse } from './contracts';
 
 export interface LessonSequence {
   learnTitle: string;
   trace?: TraceCheck;
   transferTrace?: TraceCheck;
+  offerTransferPractice?: boolean;
   titleAccent?: string;
   // A copy edit keeps the previous edition's behavioral contract and draft shape.
   equivalentExerciseVersions?: Record<string, string[]>;
@@ -29,7 +30,7 @@ export interface LessonSequence {
   };
   buildPlan: {
     prompt: TeachingProse;
-    example?: { input: number[]; expected: number };
+    example?: { input: JsonValue[]; expected: JsonValue };
     options: { id: string; text: string }[];
     correct: string;
     syntax: TeachingProse;
@@ -111,9 +112,13 @@ export function unmetPrerequisites(item: LoadedLesson, pack: CoursePack, complet
   return [...new Set([...moduleLessons, ...item.lesson.prerequisites])].filter((id) => !completed.has(id));
 }
 
-export function validateNumericSequence(item: LoadedLesson, runtime: Pick<NonNullable<Exercise['execution']>, 'engineId' | 'language' | 'runtimeVersion'>) {
+function isListValue(value: JsonValue): boolean {
+  return Array.isArray(value) ? value.every(isListValue) : typeof value === 'string' || Number.isSafeInteger(value);
+}
+
+export function validatePythonSequence(item: LoadedLesson, runtime: Pick<NonNullable<Exercise['execution']>, 'engineId' | 'language' | 'runtimeVersion'>) {
   const require = (valid: unknown, message: string) => {
-    if (!valid) throw new Error(`Invalid numeric sequence for ${item.lesson.id}: ${message}.`);
+    if (!valid) throw new Error(`Invalid Python sequence for ${item.lesson.id}: ${message}.`);
   };
   for (const exercise of [item.prediction, item.modification, item.build, item.make, item.transfer]) {
     const config = exercise.execution;
@@ -121,14 +126,19 @@ export function validateNumericSequence(item: LoadedLesson, runtime: Pick<NonNul
     require(exercise.starterCode?.trim() && exercise.prompt.length && config &&
       config.engineId === runtime.engineId && config.language === runtime.language && config.runtimeVersion === runtime.runtimeVersion &&
       !config.allowedDependencies.length && Object.values(config.limits).every((limit) => Number.isSafeInteger(limit) && limit > 0), exercise.id + ' runtime');
+    const observesArguments = exercise.grading.graderId === 'return-and-arguments';
     require(new Set(cases.map(({ id }) => id)).size === cases.length &&
-      cases.every(({ id, input, expected }) => id && Array.isArray(input) && input.every(Number.isSafeInteger) &&
-        Number.isSafeInteger(expected)), exercise.id + ' case data');
+      cases.every(({ id, input, expected, expectedArguments }) => id && Array.isArray(input) &&
+        (observesArguments
+          ? input.every(isListValue) && isListValue(expected) && Array.isArray(expectedArguments) &&
+            expectedArguments.length === input.length && expectedArguments.every(isListValue)
+          : input.every(Number.isSafeInteger) && Number.isSafeInteger(expected) && expectedArguments === undefined)),
+      exercise.id + ' case data');
     if (exercise === item.prediction) {
       require(!config?.entryPoint && exercise.grading.graderId === 'stdout-number' &&
         cases.length === 1 && Array.isArray(cases[0].input) && cases[0].input.length === 0, 'prediction case');
     } else {
-      require(/^[a-zA-Z_]\w*$/.test(config?.entryPoint ?? '') && exercise.grading.graderId === 'return-value' &&
+      require(/^[a-zA-Z_]\w*$/.test(config?.entryPoint ?? '') && (exercise.grading.graderId === 'return-value' || observesArguments) &&
         cases.length >= 3 && new Set(cases.map(({ input }) => JSON.stringify(input))).size === cases.length &&
         cases.every(({ input }) => Array.isArray(input) && Array.isArray(cases[0].input) && input.length === cases[0].input.length),
       exercise.id + ' grader');
