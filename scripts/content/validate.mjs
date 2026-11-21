@@ -10,6 +10,7 @@ export async function validateContent(lessonIds = []) {
     server: { middlewareMode: true, ws: false } });
   try {
     const { course, coursePack } = await server.ssrLoadModule('/src/courses/course.ts');
+    const { pythonCheckSource } = await server.ssrLoadModule('/src/execution/python-check.ts');
     const { unknownTeachingNames } = await server.ssrLoadModule('/src/courses/teaching-quality.ts');
     const curriculum = await readFile(new URL('../../docs/Python_AI_Interview_Learning_Curriculum_v1.1.md', import.meta.url), 'utf8');
     const rows = [...curriculum.matchAll(/^\| \*\*([A-Z]\d+\.\d+)\*\* ([^|]+) \|/gm)];
@@ -96,9 +97,11 @@ export async function validateContent(lessonIds = []) {
         const { entryPoint } = exercise.execution;
         const cases = exercise.grading.publicCases;
         const execute = (source, { input, expectedArguments }) => {
-          const observe = expectedArguments === undefined ? '_returned' : '[_returned, _values]';
-          return JSON.parse(run(source, `_values = __import__('json').loads(_args)\n_returned = ${entryPoint}(*_values)\n__import__('json').dumps(${observe}, allow_nan=False)`,
-            { _args: JSON.stringify(input) }));
+          const observed = expectedArguments !== undefined;
+          const value = JSON.parse(run(source, pythonCheckSource(entryPoint, observed), { _enntor_args_json: JSON.stringify(input) }));
+          if (!observed) return value;
+          const [returned, argumentsAfter, invalidTypes] = value;
+          return invalidTypes.length ? { returned, argumentsAfter, invalidTypes } : [returned, argumentsAfter];
         };
         const expectedCase = ({ expected, expectedArguments }) =>
           expectedArguments === undefined ? expected : [expected, expectedArguments];

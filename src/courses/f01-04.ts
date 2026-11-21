@@ -82,7 +82,8 @@ export const f0104Lesson = {
     teachingBlocks: [
       { id: id + '.intro', type: 'paragraph', content: [
         'Two screens can hold references to one list. An edit to that object appears on both screens. Point just one screen at another list and the other screen stays where it was. ',
-        emphasis('Mutation'), ' changes an existing object. ', emphasis('Rebinding'), ' changes where a name points. Use two separate questions: which object does each name point to, and what does that object contain?',
+        emphasis('Mutation'), ' changes an existing object. ', emphasis('Rebinding'), ' changes where a name points. Use two separate questions: which object does each name point to, and what does that object contain? ',
+        'A function parameter refers to the object the caller passed. Edits to a passed list are visible to any caller that still refers to it.',
       ] },
       { id: id + '.list', type: 'worked-example', language: 'python',
         code: 'board = [4]\nmirror = board\nboard.append(7)\nprint(mirror, board is mirror)\nboard = [9]\nboard[0] = 2\nprint(mirror, board[-1], board is mirror)',
@@ -143,14 +144,15 @@ export const f0104Sequence: LessonSequence = {
     ] },
   },
   buildPlan: {
-    prompt: ['The new sample label is the input text followed by "!". It is stored in the caller’s existing list. The function reports the count ',
-      emphasis('after adding it'), '. If the list starts at ["A"] and the new sample is "B", what should the caller see and what should be returned?'],
+    prompt: ['The function adds a label to the caller’s existing list, then returns the count. With ["A"] and "B", the caller sees ["A", "B!"] and receives 2. ',
+      emphasis('Why can the caller see the new label?')],
     example: { input: [['A'], 'B'], expected: 2 },
-    options: [{ id: 'updated', text: 'The list is ["A", "B!"]. Return 2.' }, { id: 'local', text: 'The list is ["A"]. Return 2.' },
-      { id: 'old-count', text: 'The list is ["A", "B!"]. Return 1.' }],
-    correct: 'updated',
+    options: [{ id: 'shared', text: 'The function and caller refer to the same list, and that list changes in place.' },
+      { id: 'replaced', text: 'Returning the new count makes Python replace the caller’s list.' },
+      { id: 'text', text: 'Changing the text of the new label also changes the caller’s list.' }],
+    correct: 'shared',
     syntax: ['The scaffold builds the new string. Make the caller’s list change, then use ', call('len()'), ' to report its current length.'],
-    retry: 'Account for both the existing list and the count after the sample is added.',
-    report: 'The tagging plan distinguishes caller-visible mutation from the reported count.',
+    retry: 'The return is an integer. Follow the list reference to see what the caller can observe.',
+    report: 'The tagging plan explains why a caller sees edits to a shared list.',
   },
 };

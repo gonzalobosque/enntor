@@ -23,6 +23,7 @@ export interface ExecutionResult {
   stderr: string;
   value?: JsonValue;
   argumentsAfter?: JsonValue[];
+  invalidTypes?: ('return' | 'arguments')[];
   error?: { message: string; line?: number; traceback?: string };
   durationMs: number;
 }

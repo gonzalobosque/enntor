@@ -132,28 +132,28 @@ export const f0106Sequence: LessonSequence = {
   },
   trace: {
     id: id + '.multi-call-state', version: '1.0.0', title: 'Dry-run the calls and the score',
-    prompt: ['For each listed line, compare the first row of ', symbol('working'), ' to the first row of ', symbol('source'), ' by ',
-      emphasis('identity'), '. Enter ', token('yes'), ' or ', token('no'), '. Then enter the source first row length as an integer. Finally enter the value of ',
-      symbol('score'), ' as an integer, or ', token('unbound'), ' if it has yet to be assigned.'],
+    prompt: ['Immediately after each listed line, compare the first row of ', symbol('working'), ' with the first row of ',
+      symbol('source'), '. Enter ', token('yes'), ' or ', token('no'), ' for whether they are the same object and separately for whether they hold ',
+      emphasis('equal contents'), '. Then enter the value of ', symbol('score'), ' as an integer, or ', token('unbound'), ' if it has yet to be assigned.'],
     source: 'from copy import deepcopy\ndef record(rows, value):\n    rows[0].append(value)\n    return len(rows[0])\nsource = [[4]]\nworking = source.copy()\nfirst = record(working, 7)\nworking = deepcopy(source)\nsecond = record(working, 9)\nscore = first + second * 2',
-    columns: ['Same first row object?', 'Source first row length', 'Score'],
+    columns: ['Same first row object?', 'Equal first row contents?', 'Score'],
     rows: [
-      { label: 'Line 7', expected: ['yes', '2', 'unbound'] }, { label: 'Line 8', expected: ['no', '2', 'unbound'] },
-      { label: 'Line 10', expected: ['no', '2', '8'] },
+      { label: 'Line 7', expected: ['yes', 'yes', 'unbound'] }, { label: 'Line 8', expected: ['no', 'yes', 'unbound'] },
+      { label: 'Line 10', expected: ['no', 'no', '8'] },
     ],
     help: {
-      concept: ['Write the object the function receives at each call before counting or calculating anything.'],
+      concept: ['Write the object the function receives at each call before comparing or calculating anything.'],
       guidance: ['Resolve each call and save its return value. For the second call, follow ', symbol('working'),
         ' after the rebinding. The multiplication in the score uses the second return.'],
       worked: [
         ['The first call receives a shallow copy. The first row is shared, so the source first row becomes [4, 7].'],
-        [symbol('working'), ' now holds an independent copy of the source in its current state, including [4, 7].'],
-        ['The second call affects only the new row and returns 3. The source keeps two items. ',
+        [symbol('working'), ' now holds a different first-row object. Both rows contain [4, 7].'],
+        ['The second call makes the new row [4, 7, 9] and returns 3. The source row stays [4, 7], so the contents differ. ',
           symbol('score'), ' is ', code('2 + 3 * 2'), ', or 8.'],
       ],
     },
     mistake: { id: 'sum-before-multiply', message: 'Your final row gives a score of 10. With return values 2 and 3, which part of the expression does Python evaluate first?', cells: [
-      { row: 2, column: 0, value: 'no' }, { row: 2, column: 1, value: '2' }, { row: 2, column: 2, value: '10' },
+      { row: 2, column: 0, value: 'no' }, { row: 2, column: 1, value: 'no' }, { row: 2, column: 2, value: '10' },
     ] },
   },
   buildPlan: {

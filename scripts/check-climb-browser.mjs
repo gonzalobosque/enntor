@@ -177,7 +177,7 @@ try {
   assert.equal(repaired.coachedBefore, true);
   assert.deepEqual(repaired.hints, []);
   assert(completed.submissions.every(item => !item.hints.includes('H4')));
-  assert.equal(completed.pack.version, '1.7.0');
+  assert.equal(completed.pack.version, '1.8.0');
   assert.deepEqual(completed.openedTransfer, { id: 'F01.02.make-transfer', version: '1.2.0' });
   assert.equal(completed.traces[0].pattern, 'snapshot-followed-rebinding');
   assert.deepEqual(completed.traces.map(item => item.correct), [false, false, true]);

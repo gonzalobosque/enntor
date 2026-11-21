@@ -36,13 +36,14 @@ export async function gradeExercise(engine: ExecutionEngine, exercise: Exercise,
     runs.push(run);
     if (run.status !== 'completed') return { grade, runs };
     const expectedAfter = test.expectedArguments;
-    const passed = sameCaseValue(run.value, test.expected) &&
+    const passed = !run.invalidTypes?.length && sameCaseValue(run.value, test.expected) &&
       (expectedAfter === undefined || sameCaseValue(run.argumentsAfter, expectedAfter));
     const mutation = expectedAfter === undefined ? '' :
       ` Expected arguments after call ${JSON.stringify(expectedAfter)}, observed ${JSON.stringify(run.argumentsAfter)}.`;
+    const typeIssue = run.invalidTypes?.length ? ' The observed return or input state contains a value other than a list, integer or string.' : '';
     grade.evidence.push({
       id: test.id, passed,
-      message: `Inputs ${JSON.stringify(test.input)}. Expected ${JSON.stringify(test.expected)}, returned ${JSON.stringify(run.value)}.` + mutation,
+      message: `Inputs ${JSON.stringify(test.input)}. Expected ${JSON.stringify(test.expected)}, returned ${JSON.stringify(run.value)}.` + mutation + typeIssue,
     });
   }
   grade.verdict = grade.evidence.every(({ passed }) => passed) ? 'passed' : 'failed';

@@ -33,11 +33,22 @@ export async function coachCheck(exercise: Exercise, submission: Submission, pre
     const run = submission.runs?.[index];
     if (test.expectedArguments === undefined || run?.status !== 'completed' || shown(id) ||
         !submission.grade?.evidence.some(item => item.id === test.id && !item.passed)) continue;
+    if (run.invalidTypes?.length) return {
+      id, caseId: test.id,
+      fact: 'The checked ' + (run.invalidTypes.includes('return') ? 'return' : 'input state after the call') +
+        ' contains a value other than a list, integer or string.',
+      question: 'Check the required type at each level of the result and input lists. What kind of object does Python build at that point?',
+    };
     if (!sameCaseValue(run.argumentsAfter, test.expectedArguments)) {
+      const index = test.expectedArguments.findIndex((expected, index) => !sameCaseValue(run.argumentsAfter?.[index], expected));
       const preserve = sameCaseValue(test.input, test.expectedArguments);
+      const returnMatches = sameCaseValue(run.value, test.expected) ? 'The return matches. ' : '';
+      const actual = run.argumentsAfter?.[index];
       return {
         id, caseId: test.id,
-        fact: `For ${JSON.stringify(test.input)}, the caller's inputs ended as ${JSON.stringify(run.argumentsAfter)}. The required state was ${JSON.stringify(test.expectedArguments)}.`,
+        fact: index < 0 || actual === undefined ? 'The check could not match the observed input state.'
+          : returnMatches + 'Input ' + (index + 1) + ' ended as ' + JSON.stringify(actual) +
+            '. It should be ' + JSON.stringify(test.expectedArguments[index]) + ' after the call.',
         question: preserve ? 'Which objects does your function change? Does the caller still share a reference to one of them?'
           : 'Which change should the caller be able to see after the function runs? Follow the reference to the object your code actually changes.',
       };

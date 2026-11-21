@@ -216,6 +216,8 @@ export function ExerciseEditor({ stage, exercise, draftKey, earlierDraftKey, hin
                       {test.expectedArguments !== undefined && <span>Return </span>}
                       <code>{run?.status === 'completed' ? JSON.stringify(run.value) : '—'}</code>
                       {test.expectedArguments !== undefined && <div>Inputs after call <code>{run?.argumentsAfter === undefined ? '—' : JSON.stringify(run.argumentsAfter)}</code></div>}
+                      {run?.invalidTypes?.includes('return') && <div>Unexpected Python type in return</div>}
+                      {run?.invalidTypes?.includes('arguments') && <div>Unexpected Python type in inputs after call</div>}
                     </td>
                     <td>{evidence ? evidence.passed ? 'Passed' : 'Failed' : run ? 'Incomplete' : 'Not run'}</td>
                   </tr>;

@@ -64,7 +64,9 @@ export function LessonReport({ item, session, reports, onReport, storageAlert, o
           : repeat || assistedTransfer ? 'Finished as practice. No new independent coding evidence.'
             : make?.coachedBefore ? 'Coding checks passed after coaching. No new independent coding evidence.'
               : make?.hints.length ? 'Make passed with help.' : 'Make passed on a previously seen problem.'}</strong></p>
-        {sequence.trace && <p>{checks.length ? 'Public code checks measure returned results. Trace checks record reasoning about the names and values separately.'
+        {sequence.trace && <p>{checks.length ? mainExercise.grading.graderId === 'return-and-arguments'
+          ? 'Public code checks measure returned results and caller input state. Trace checks record reasoning about references and contents separately.'
+          : 'Public code checks measure returned results. Trace checks record reasoning about the names and values separately.'
           : 'This earlier edition did not record trace evidence.'}</p>}
         {make?.hints.length ? <p>Recorded help: {make.hints.join(', ')}. {hasSolutionHelp(make.hints) ? 'Includes implementation help.' : 'Conceptual help.'}</p> : null}
       </section>

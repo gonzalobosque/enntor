@@ -43,7 +43,7 @@ export const stateFixtures = {
   'F01.06': {
     outputs: { 'F01.06.calls': '[[4, 7]] [[4, 7, 9]] 8', 'F01.06.replace': 'False False [[4]] [[9]]' },
     traces: {
-      'F01.06.multi-call-state': "['yes' if working[0] is source[0] else 'no', str(len(source[0])), str(globals().get('score', 'unbound'))]",
+      'F01.06.multi-call-state': "['yes' if working[0] is source[0] else 'no', 'yes' if working[0] == source[0] else 'no', str(globals().get('score', 'unbound'))]",
     },
     exercises: {
       modify: wrong('from copy import deepcopy\n\ndef compare_batches(rows, reading):\n    before = deepcopy(rows)\n    rows[0].append(reading)\n    first = len(rows[0])\n    rows[0].append(reading + 1)\n    second = len(rows[0])\n    return [before, (first + second) * 2]', 'two'),

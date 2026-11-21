@@ -132,6 +132,7 @@ test('structured grading distinguishes a correct return from caller-visible stat
     assert.equal(changed.grade.verdict, 'failed');
     assert.deepEqual(changed.runs[0].value, first.expected);
     assert.match(changed.grade.evidence[0].message, /Expected arguments after call/);
+    assert.equal((await check(engine(() => ({ invalidTypes: ['return'] })))).grade.verdict, 'failed');
     assert.equal((await check(engine(() => ({ argumentsAfter: undefined })))).grade.verdict, 'failed');
     assert.equal((await check(engine(() => ({ status: 'cancelled' })))).grade.verdict, 'ungraded');
 
