@@ -2,13 +2,13 @@
 
 ENNTOR is a teaching-first learning platform for independent problem solving. Its first planned Course Pack focuses on Python and applied AI/ML interview skills. The educational goal is to write correct, explainable code from scratch, repair mistakes, and transfer understanding to unfamiliar problems.
 
-## Current scope · Milestone 4A
+## Current scope · Milestone 4B
 
-The Climb offers the first three F01 lessons, from **Expressions and evaluation order** through **Variables and reassignment** to **Identity and equality**. Each completed lesson opens the next. Learn from a worked example, commit a prediction, investigate the real Python result, modify a function, plan and build a guided function, then write one from scratch. Finish saves completion and opens a separate learning report, where the optional Sweat check-in can be changed or skipped. The Gym offers one evaluation-order workout. The Room remains a preview.
+The Climb offers all six F01 lessons, from **Expressions and evaluation order** through **State tracing laboratory**. The teaching sequence includes mutation, rebinding and nested copies. The curriculum’s separate module-level gate is future work. Each completed lesson opens the next. Learn from a worked example, commit a prediction, investigate the real Python result, modify a function, plan and build a guided function, then write one from scratch. Finish saves completion and opens a separate learning report, where the optional Sweat check-in can be changed or skipped. The Gym offers one evaluation-order workout. The Room remains a preview.
 
 The CodeMirror Python editor uses syntax-aware indentation. Tab indents four spaces, Shift+Tab outdents, and Escape followed by Tab moves focus out. Use the standard undo and redo shortcuts for your platform.
 
-**Check solution** runs the graded editor with public cases and reports the verdict separately from console output. Predictions retain their own execution action. **Stop** terminates the active worker. Reset and Try again from scratch save edited code under Previous drafts before restoring starter code.
+**Check solution** runs the graded editor with public cases and reports the verdict separately from console output. For list exercises, it checks both returned values and the input lists after the call. Predictions retain their own execution action. **Stop** terminates the active worker. Reset and Try again from scratch save edited code under Previous drafts before restoring starter code.
 
 A passing Make result without hints or a prior pass on that exercise demonstrates independent skill on that problem when there is no earlier exposure to the same exercise edition. Conceptual hints count as assistance. An implementation hint requires a separate Make task before Finish. The completion summary distinguishes these states.
 
@@ -69,7 +69,7 @@ The app requests DM Sans and Space Grotesk from Google Fonts. System sans-serif 
 | src/mentoring | Consented context and reasoning-feedback contracts |
 | docs/architecture | Accepted amendments and reversible engineering decisions |
 
-The ordered Course Pack feeds the same lesson player, prerequisite gates and reports. See [curriculum authoring and validation](docs/curriculum-authoring.md) and the [Milestone 4A teaching review](docs/review/milestone-4a/README.md).
+The ordered Course Pack feeds the same lesson player, prerequisite gates and reports. See [curriculum authoring and validation](docs/curriculum-authoring.md), the [Milestone 4A teaching review](docs/review/milestone-4a/README.md) and the [Milestone 4B teaching review](docs/review/milestone-4b/README.md).
 
 ## Educational and development specifications
 
@@ -131,6 +131,8 @@ npx playwright install chromium
 ENNTOR_TEST_ORIGIN=http://127.0.0.1:5173 node scripts/check-pilot-editor.mjs
 ENNTOR_TEST_ORIGIN=http://127.0.0.1:5173 node scripts/check-pilot-results.mjs
 ENNTOR_TEST_ORIGIN=http://127.0.0.1:5173 node scripts/check-gym-browser.mjs
+ENNTOR_TEST_ORIGIN=http://127.0.0.1:5173 node scripts/check-climb-browser.mjs
+ENNTOR_TEST_ORIGIN=http://127.0.0.1:5173 node scripts/check-f01-state-browser.mjs
 ```
 
 For activity design and review, see [Progressive independence with controlled difficulty](docs/teaching-guidelines.md).

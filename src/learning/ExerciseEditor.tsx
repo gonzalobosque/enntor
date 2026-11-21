@@ -198,7 +198,8 @@ export function ExerciseEditor({ stage, exercise, draftKey, earlierDraftKey, hin
                 : 'Check incomplete. See the execution output above.'}</p>
               {coaching && <p className="check-coaching"><strong>{coaching.fact}</strong> {coaching.question}</p>}
               <table className="pilot-tests">
-                <caption>Public return-value checks</caption>
+                <caption>{exercise.grading.graderId === 'return-and-arguments'
+                  ? 'Public return and input-state checks' : 'Public return-value checks'}</caption>
                 <thead><tr><th scope="col">Inputs</th><th scope="col">Expected</th>
                   <th scope="col">Actual</th><th scope="col">Status</th></tr></thead>
                 <tbody>{exercise.grading.publicCases.map((test, index) => {
@@ -206,8 +207,18 @@ export function ExerciseEditor({ stage, exercise, draftKey, earlierDraftKey, hin
                   const evidence = grade.evidence[index];
                   return <tr key={test.id}>
                     <td><code>{JSON.stringify(test.input)}</code></td>
-                    <td><code>{JSON.stringify(test.expected)}</code></td>
-                    <td><code>{run?.status === 'completed' ? JSON.stringify(run.value) : '—'}</code></td>
+                    <td>
+                      {test.expectedArguments !== undefined && <span>Return </span>}
+                      <code>{JSON.stringify(test.expected)}</code>
+                      {test.expectedArguments !== undefined && <div>Inputs after call <code>{JSON.stringify(test.expectedArguments)}</code></div>}
+                    </td>
+                    <td>
+                      {test.expectedArguments !== undefined && <span>Return </span>}
+                      <code>{run?.status === 'completed' ? JSON.stringify(run.value) : '—'}</code>
+                      {test.expectedArguments !== undefined && <div>Inputs after call <code>{run?.argumentsAfter === undefined ? '—' : JSON.stringify(run.argumentsAfter)}</code></div>}
+                      {run?.invalidTypes?.includes('return') && <div>Unexpected Python type in return</div>}
+                      {run?.invalidTypes?.includes('arguments') && <div>Unexpected Python type in inputs after call</div>}
+                    </td>
                     <td>{evidence ? evidence.passed ? 'Passed' : 'Failed' : run ? 'Incomplete' : 'Not run'}</td>
                   </tr>;
                 })}</tbody>

@@ -1,4 +1,4 @@
-import type { Exercise, Lesson, TeachingInline, TeachingProse } from './contracts';
+import type { Exercise, JsonValue, Lesson, TeachingInline, TeachingProse } from './contracts';
 import { pythonEngineId, pythonVersion } from '../execution/python-config';
 
 export const symbol = (text: string): TeachingInline => ({ role: 'variable', text });
@@ -26,7 +26,7 @@ export function prediction(lessonId: string, concept: string, source: string, ou
 
 type Task = Pick<Exercise, 'title' | 'kind' | 'prompt' | 'hints' | 'coaching'> & {
   key: string; entryPoint: string; starter?: string; revision?: string;
-  cases: [id: string, input: number[], expected: number][];
+  cases: [id: string, input: JsonValue[], expected: JsonValue, expectedArguments?: JsonValue[]][];
 };
 
 export function task(lessonId: string, concept: string, config: Task): Exercise {
@@ -34,8 +34,12 @@ export function task(lessonId: string, concept: string, config: Task): Exercise 
   return {
     ...content, id: lessonId + '.' + key, version: revision, lessonId, conceptIds: [concept], difficulty: 1,
     starterCode: starter ?? '# Write the full function here.\n', execution: { ...execution, entryPoint },
-    grading: { graderId: 'return-value', graderVersion: version, rubric: 'Return the specified integer.',
-      publicCases: cases.map(([id, input, expected]) => ({ id, input, expected })), configuration: {} },
+    grading: {
+      graderId: cases.some((fixture) => fixture[3] !== undefined) ? 'return-and-arguments' : 'return-value',
+      graderVersion: version, rubric: 'Meet the stated return and input-state requirements.',
+      publicCases: cases.map(([id, input, expected, expectedArguments]) => ({ id, input, expected, expectedArguments })),
+      configuration: {},
+    },
   };
 }
 
@@ -51,4 +55,10 @@ export function foundationLesson(details: Pick<Lesson, 'id' | 'title' | 'objecti
   const exerciseIds = exercises.map(({ id }) => id);
   return { ...details, version, moduleId: 'F01', estimatedMinutes: 15, exerciseIds,
     progression: { requiredExerciseIds: exerciseIds.slice(0, 4), requiresIndependentTransfer: true } };
+}
+
+// The first argument is the caller's list. The remaining arguments are scalar inputs.
+export function listCase(id: string, input: [JsonValue[], ...JsonValue[]], expected: JsonValue,
+  firstAfter: JsonValue[] = input[0]): Task['cases'][number] {
+  return [id, input, expected, [firstAfter, ...input.slice(1)]];
 }

@@ -1,3 +1,5 @@
+import { stateFixtures } from './state-fixtures.mjs';
+
 const fixture = (reference, wrong, misses) => ({ reference, wrong, misses });
 export const fixtures = {
   'F01.01': {
@@ -48,4 +50,5 @@ export const fixtures = {
         'def duplicate_flag(level, first, second, restore):\n    archive = [level]\n    desk = archive if restore else [second]\n    return int([first] == archive) + int(desk == archive)', 'restored'),
     },
   },
+  ...stateFixtures,
 };

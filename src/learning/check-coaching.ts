@@ -1,4 +1,5 @@
 import type { Exercise } from '../courses/contracts';
+import { sameCaseValue } from '../execution/grading';
 import { diagnoseExecution, failedReturnCases } from '../execution/diagnostics';
 import type { Submission } from './evidence';
 
@@ -27,6 +28,37 @@ export async function coachCheck(exercise: Exercise, submission: Submission, pre
     fact: 'The check stopped with an execution error before it could grade this case.',
     question: 'What does the execution output say happened before the function returned?',
   };
+  for (const [index, test] of exercise.grading.publicCases.entries()) {
+    const id = 'state-case:' + test.id;
+    const run = submission.runs?.[index];
+    if (test.expectedArguments === undefined || run?.status !== 'completed' || shown(id) ||
+        !submission.grade?.evidence.some(item => item.id === test.id && !item.passed)) continue;
+    if (run.invalidTypes?.length) return {
+      id, caseId: test.id,
+      fact: 'The checked ' + (run.invalidTypes.includes('return') ? 'return' : 'input state after the call') +
+        ' contains a value other than a list, integer or string.',
+      question: 'Check the required type at each level of the result and input lists. What kind of object does Python build at that point?',
+    };
+    if (!sameCaseValue(run.argumentsAfter, test.expectedArguments)) {
+      const index = test.expectedArguments.findIndex((expected, index) => !sameCaseValue(run.argumentsAfter?.[index], expected));
+      const preserve = sameCaseValue(test.input, test.expectedArguments);
+      const returnMatches = sameCaseValue(run.value, test.expected) ? 'The return matches. ' : '';
+      const actual = run.argumentsAfter?.[index];
+      return {
+        id, caseId: test.id,
+        fact: index < 0 || actual === undefined ? 'The check could not match the observed input state.'
+          : returnMatches + 'Input ' + (index + 1) + ' ended as ' + JSON.stringify(actual) +
+            '. It should be ' + JSON.stringify(test.expectedArguments[index]) + ' after the call.',
+        question: preserve ? 'Which objects does your function change? Does the caller still share a reference to one of them?'
+          : 'Which change should the caller be able to see after the function runs? Follow the reference to the object your code actually changes.',
+      };
+    }
+    return {
+      id, caseId: test.id,
+      fact: `For ${JSON.stringify(test.input)}, the input state matches, but the function returned ${JSON.stringify(run.value)}. The expected return was ${JSON.stringify(test.expected)}.`,
+      question: 'At which point is the reported value supposed to be recorded? Trace this case up to that point.',
+    };
+  }
   const failed = failedReturnCases(exercise, submission);
   if (!failed.length) return undefined;
   if (exercise.execution?.language === 'python' && !shown('unused-calculation')) {

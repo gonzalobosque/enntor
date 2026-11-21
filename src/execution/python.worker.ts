@@ -1,4 +1,5 @@
 /// <reference types="vite/client" />
+import { pythonCheckSource } from './python-check';
 import type { ExecutionRequest, ExecutionResult } from './contracts';
 
 self.onmessage = async ({ data: request }: MessageEvent<ExecutionRequest>) => {
@@ -37,15 +38,18 @@ self.onmessage = async ({ data: request }: MessageEvent<ExecutionRequest>) => {
       python.runPython(request.source, { globals: namespace, filename: 'exercise.py' });
       if (request.entryPoint) {
         namespace.set('_enntor_args_json', JSON.stringify(request.input ?? []));
-        const serialized = python.runPython(
-          `import json as _enntor_json\n_enntor_json.dumps(${request.entryPoint}(*_enntor_json.loads(_enntor_args_json)), allow_nan=False)`,
-          { globals: namespace, filename: 'check.py' },
-        );
+        const serialized = python.runPython(pythonCheckSource(request.entryPoint, !!request.observeArguments),
+          { globals: namespace, filename: 'check.py' });
         if (serialized.length > request.limits.outputBytes) {
           outputLimited = true;
           throw new Error('Python exceeded the return value limit.');
         }
-        result.value = JSON.parse(serialized);
+        if (request.observeArguments) {
+          const [value, argumentsAfter, invalidTypes] = JSON.parse(serialized);
+          result.value = value;
+          result.argumentsAfter = argumentsAfter;
+          if (invalidTypes.length) result.invalidTypes = invalidTypes;
+        } else result.value = JSON.parse(serialized);
       }
     } finally {
       namespace.destroy();

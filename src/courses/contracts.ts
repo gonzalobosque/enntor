@@ -66,6 +66,13 @@ export interface Lesson {
 
 export type HintLevel = 'H0' | 'H1' | 'H2' | 'H3' | 'H4';
 
+export interface PublicCase {
+  id: string;
+  input: JsonValue;
+  expected: JsonValue;
+  expectedArguments?: JsonValue[];
+}
+
 export interface Exercise {
   id: ContentId;
   version: ContentVersion;
@@ -90,7 +97,7 @@ export interface Exercise {
     graderId: string;
     graderVersion: string;
     rubric: string;
-    publicCases: { id: string; input: JsonValue; expected: JsonValue }[];
+    publicCases: PublicCase[];
     /** Reference to trusted fixtures, never a promise of client-side secrecy. */
     fixtureSet?: ContentReference;
     configuration: Record<string, JsonValue>;

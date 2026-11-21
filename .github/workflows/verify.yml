@@ -4,7 +4,8 @@ on:
   pull_request:
     branches: [main]
   push:
-    branches: [main]
+    # The 4B draft targets a feature branch. Verify the exact review head.
+    branches: [main, codex/f01-complete]
 
 permissions:
   contents: read
